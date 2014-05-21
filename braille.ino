@@ -3,8 +3,7 @@
 #include<avr/pgmspace.h>//explicitly stated read only memory
 
 // brialle convertion array
-#define ENCODEAMT 27
-
+#define ENCODEAMT 27 // size is defined to structure iteration amount
 prog_char const byteToBraille [2][ENCODEAMT] // write convertion data to persistent memory to save ram
 {
   { // input in characters
@@ -27,6 +26,8 @@ void loop()
   capActuation();
 }
 
+// ---------------Main functions--------------------
+
 void capActuation()
 {
   byte state= capState();//abstract state once to avoid registering second states over time.
@@ -37,15 +38,58 @@ void capActuation()
   
   if(letter)
   {//only actuate when given data
-    patternVibrate(state);//provides haptic feedback for keystroke
-    //bluePrint(letter);//send letter over bluetooth
-    newLetterSerial(letter);//prints the letter to the serial monitor if its a new one
+    patternVibrate(state);//provides haptic feedback for keystroke;
+    //newLetterSerial(letter);//prints the letter to the serial monitor if its a new one
   }
   else
   {
     patternVibrate(0);
   };
 }
+
+#define BOUNCETIME 50 //ms
+#define HOLDTIME 500 //ms
+#define PRESS 0 // maybe the numbers of timer functions can be enumerated in the future
+#define HOLD 1  // in order to avoid conflicts
+
+void blueDebounce(char letter)
+{//clasifies human intention, varifying keystroke and sending over bluetooth
+  static char lastLetter= 0;
+  static boolean printFlag = 0;
+  static boolean upperFlag = 0;
+
+  if (letter)
+  {// given we are dealing with a value other then zero
+    if (letter==lastLetter)
+    {
+      if(printFlag)
+      {// if the go ahead to print has been flagged then holds can detected
+        if (timeCheck(HOLD))
+        {//if the hold timer elapses then flag for and upper case
+          upperFlag= true;
+        }
+      }
+      else if (timeCheck(PRESS))
+      {
+        printFlag = true;
+        timeCheck(HOLD, HOLDTIME);
+      }
+    }
+    else
+    {
+      timeCheck(PRESS, BOUNCETIME);
+    }
+  }
+  else if(printFlag)
+  {// if the chord as been let go and there was a lagit key last time
+    btShiftPrint(lastLetter, upperFlag);
+    upperFlag= false;
+    printFlag= false;
+  }
+
+  lastLetter = letter;
+}
+
 
 
 

@@ -132,63 +132,20 @@ void blueBraille(byte pads)
 }
 
 //---------------------------------------------------
-#define BOUNCETIME 10 //ms
-#define HOLDTIME 500 //ms
-void blueDebounce(char letter)
-{//clasifies human intention, varifying keystroke and sending over bluetooth
-  static char lastLetter= 0;
-  static byte debounce = BOUNCETIME; // the time needs to change to reset clock
-  static boolean printFlag = 0;
-  static boolean upperFlag = 0;
-  static boolean reset = 0;
 
-  if (letter)
-  {
-    if (letter==lastLetter)
-    {
-      if(printFlag)
-      {
-        if (timeCheck(0))
-        {
-          upperFlag= true;
-        }
-      }
-      else if (timer0(debounce, reset))
-      {
-        printFlag = true;
-        timeCheck(0, HOLDTIME);
-      }
-    }
-    else// if we get a letter but its not the same as the last
-    {
-      reset=true;
-    };
-  }
-  else if(printFlag)
-  {
-    if(upperFlag && lastLetter > 32)
-    {// upperflag capitilizes letters
-      BT.write(lastLetter - 32);// ex. "a" = 97: 97 - 32 = 65: 65 = "A"
-      upperFlag = false;
-    }
-    else
-    {
-      BT.write(lastLetter);
-    }
-    printFlag= false;
-    reset=true;
-  }
-  else if ( letter != lastLetter)// the exact event where a failed keystroke ends
-  {
-    Serial.print("failed key");
-    reset=true;
+void btShiftPrint(char letter, boolean caps)
+{
+  if(caps && letter > 32)
+  {// upperflag capitilizes letters
+    char newLetter= letter - 32;
+    BT.write(newLetter);// ex. "a" = 97: 97 - 32 = 65: 65 = "A"
+    Serial.print(newLetter);
   }
   else
   {
-    reset=true;
+    BT.write(letter);
+    Serial.print(letter);
   }
-
-  lastLetter = letter;
 }
 
 void blueTesting()
@@ -205,6 +162,7 @@ void blueTesting()
     }
   }
 }
+
 
 
 

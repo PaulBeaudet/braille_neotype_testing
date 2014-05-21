@@ -23,23 +23,18 @@ void setup()
 
 void loop()
 {
-  capActuation();
+  byte input = capState(); // sample the input
+  inputIntention(ifBraille(input)); // if the input is valid braille filter it to "human intents" and print over bluetooth
+  hapticFeeback(input); //provide a haptic response
 }
 
 // ---------------Main functions--------------------
 
-void capActuation()
+void hapticFeedback(byte input)
 {
-  byte state= capState();//abstract state once to avoid registering second states over time.
-  char letter= ifBraille(state);//fill this var given a matching mapping
-  
-  blueDebounce(letter);//clasifies human intention, varifying keystroke and sending over bluetooth
-  //newLetterSerial(letter);//prints the letter to the serial monitor if its a new one
-  
-  if(letter)
+  if(input)
   {//only actuate when given data
-    patternVibrate(state);//provides haptic feedback for keystroke;
-    //newLetterSerial(letter);//prints the letter to the serial monitor if its a new one
+    patternVibrate(input);//provides haptic feedback for keystroke
   }
   else
   {
@@ -52,7 +47,7 @@ void capActuation()
 #define PRESS 0 // maybe the numbers of timer functions can be enumerated in the future
 #define HOLD 1  // in order to avoid conflicts
 
-void blueDebounce(char letter)
+void inputIntention(char letter)
 {//clasifies human intention, varifying keystroke and sending over bluetooth
   static char lastLetter= 0;
   static boolean printFlag = 0;

@@ -135,7 +135,11 @@ void blueBraille(byte pads)
 
 void btShiftPrint(char letter, boolean caps)
 {
-  if(caps && letter > 32)
+  if(letter==8)
+  {
+    BT.write(BACK);
+  }
+  else if(caps && letter > 32)
   {// upperflag capitilizes letters
     char newLetter= letter - 32;
     BT.write(newLetter);// ex. "a" = 97: 97 - 32 = 65: 65 = "A"

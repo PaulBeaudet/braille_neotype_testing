@@ -3,14 +3,14 @@
 #include<avr/pgmspace.h>//explicitly stated read only memory
 
 // brialle convertion array
-#define ENCODEAMT 27 // size is defined to structure iteration amount
+#define ENCODEAMT 28 // size is defined to structure iteration amount
 prog_char const byteToBraille [2][ENCODEAMT] // write convertion data to persistent memory to save ram
 {
   { // input in characters
-    ' ','t','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','u','v','w','x','y','z',  }
+    ' ','t','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','u','v','w','x','y','z', 8, }
   ,
   { //corrisponding braille binary output in decimal form, read from least significant bit
-     32, 30, 1 , 5 , 3 , 11, 9 , 7 , 15, 13, 6 , 14, 17, 21, 19, 27, 25, 23, 31, 29, 22, 49, 53, 46, 51, 59, 57 ,  } 
+     32, 30, 1 , 5 , 3 , 11, 9 , 7 , 15, 13, 6 , 14, 17, 21, 19, 27, 25, 23, 31, 29, 22, 49, 53, 46, 51, 59, 57 ,64, } 
 };//each bit in the corrisponding bytes represents a "bump" state
 
 void setup()
@@ -23,9 +23,9 @@ void setup()
 
 void loop()
 {
-  byte input = capState(); // sample the input
-  inputIntention(ifBraille(input)); // if the input is valid braille filter it to "human intents" and print over bluetooth
-  hapticFeeback(input); //provide a haptic response
+  char input = ifBraille(capState()); //if the input is valid braille sample it
+  inputIntention(input); //  filter input to "human intents" and print over bluetooth
+  hapticFeedback(input); //provide a haptic response
 }
 
 // ---------------Main functions--------------------
@@ -52,7 +52,7 @@ void inputIntention(char letter)
   static char lastLetter= 0;
   static boolean printFlag = 0;
   static boolean upperFlag = 0;
-
+  
   if (letter)
   {// given we are dealing with a value other then zero
     if (letter==lastLetter)

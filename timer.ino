@@ -21,3 +21,46 @@ boolean timer(unsigned long time)
   return false;//fall thru case
 }
 
+boolean timer0(unsigned long time, boolean reset)
+{
+  static unsigned long startTime = millis();
+  static unsigned long setTime;
+
+  if (reset)//reset the clock
+  {
+    setTime = time; //set the clock
+    startTime = millis();//track what the start time was
+  }
+  else
+  {
+    if ( millis() - startTime > setTime)
+    {
+      setTime=0;//ready the function for next timed action
+      //this makes it posible to repeat the same durration 
+      return true;// the time is up!
+    }//given durration is still in progress fall thru to false case
+  }
+  return false;//fall thru case
+}
+
+boolean timer1(unsigned long time, boolean reset)
+{
+  static unsigned long startTime = millis();
+  static unsigned long setTime;
+
+  if (reset)//reset the clock
+  {
+    setTime = time; //set the clock
+    startTime = millis();//track what the start time was
+  }
+  else
+  {
+    if ( millis() - startTime > setTime)
+    {
+      setTime=0;//ready the function for next timed action
+      //this makes it posible to repeat the same durration 
+      return true;// the time is up!
+    }//given durration is still in progress fall thru to false case
+  }
+  return false;//fall thru case
+}

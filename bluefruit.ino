@@ -1,10 +1,8 @@
+//The following are general purpose functions for the Adafruit Bluefruit EZ-Key HID
 #include <SoftwareSerial.h>
 
 // Code for Adafruit Bluefruit EZ-Key serial reports
 // http://www.cambiaresearch.com/articles/15/javascript-char-codes-key-codes
-// to test the non-printing characters!
-// in this case to avoid the I2C pins on the mircro RX =pin4 and TX =pin5
-
 SoftwareSerial BT = SoftwareSerial(8, 9);//first is rx, second is tx
 //connect assigned tx on arduino to rx on the bluefruit
 
@@ -36,16 +34,16 @@ SoftwareSerial BT = SoftwareSerial(8, 9);//first is rx, second is tx
 //-----------------------------
 
 /* ------INDEX of Functions
-  SETUP
-  outputUp(); // bang! bring up serial conection with bluefruit
-
-  GENERAL
-  bluePrint('char'); // prints passed argument
-
-  TESTING
-  printabletest();// send printable characters
-  nonprinting(); // actuate non-printable keystrokes
-*/
+ SETUP
+ outputUp(); // bang! bring up serial conection with bluefruit
+ 
+ GENERAL
+ bluePrint('char'); // prints passed argument
+ 
+ TESTING
+ printabletest();// send printable characters
+ nonprinting(); // actuate non-printable keystrokes
+ */
 
 // --------------SETUP --------------------------
 void blueUp()
@@ -54,6 +52,10 @@ void blueUp()
 }
 
 //-----------------------GENERAL ------------------
+void bluePrint(char key)
+{
+  BT.write(key);
+}
 
 void bluePrint(char input[])// take a char array or line in "quotes"
 {
@@ -67,12 +69,7 @@ void bluePrint(char input[])// take a char array or line in "quotes"
 
 void bluePrintln(char input[])// take a char array or line in "quotes"
 {
-  int i = 0;
-  while (input[i])
-  {
-    BT.write(input[i]);
-    i++;
-  }
+  bluePrint(input);
   BT.write(KEY_RETURN);
 }
 
@@ -85,18 +82,13 @@ void pressKeys(int presses, char key)
   }
 }
 
-void pressKey(char key)
-{
-  BT.write(key);
-}
-
 //HID only / serial creative (new lining reproduction)
 void backSpace()
 {
   BT.write(BACK);
 }
 
-void backSpaces(int increment)
+void backSpace(int increment)
 {
   for(int i=0;i<increment;i++)
   {
@@ -126,6 +118,8 @@ void movement(int increment, boolean bearing)
   }
 }
 
+//------ braille particular -----------
+
 void blueBraille(byte pads)
 {
   for(byte i=0; i<ENCODEAMT; i++)
@@ -138,11 +132,69 @@ void blueBraille(byte pads)
 }
 
 //---------------------------------------------------
+#define BOUNCETIME 10 //ms
+#define HOLDTIME 500 //ms
+void blueDebounce(char letter)
+{//clasifies human intention, varifying keystroke and sending over bluetooth
+  static char lastLetter= 0;
+  static byte debounce = BOUNCETIME; // the time needs to change to reset clock
+  static boolean printFlag = 0;
+  static boolean upperFlag = 0;
+  static boolean reset = 0;
+
+  if (letter)
+  {
+    if (letter==lastLetter)
+    {
+      if(printFlag)
+      {
+        if (timer(HOLDTIME))
+        {
+          upperFlag= true;
+        }
+      }
+      else if (timer0(debounce, reset))
+      {
+        printFlag = true;
+      }
+      reset = false;
+    }
+    else// if we get a letter but its not the same as the last
+    {
+      reset=true;
+    };
+  }
+  else if(printFlag)
+  {
+    if(upperFlag && lastLetter > 32)
+    {// upperflag capitilizes letters
+      BT.write(lastLetter - 32);// ex. "a" = 97: 97 - 32 = 65: 65 = "A"
+      upperFlag = false;
+    }
+    else
+    {
+      BT.write(lastLetter);
+    }
+    printFlag= false;
+    reset=true;
+  }
+  else if ( letter != lastLetter)// the exact event where a failed keystroke ends
+  {
+    Serial.print("failed key");
+    reset=true;
+  }
+  else
+  {
+    reset=true;
+  }
+
+  lastLetter = letter;
+}
 
 void blueTesting()
 {
   static char count = '1';
-  
+
   bluePrintln("This is a test of bluefruit!");
   count++;
 
@@ -153,6 +205,10 @@ void blueTesting()
     }
   }
 }
+
+
+
+
 
 
 

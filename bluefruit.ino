@@ -148,7 +148,7 @@ void blueDebounce(char letter)
     {
       if(printFlag)
       {
-        if (timer(HOLDTIME))
+        if (timeCheck(0))
         {
           upperFlag= true;
         }
@@ -156,8 +156,8 @@ void blueDebounce(char letter)
       else if (timer0(debounce, reset))
       {
         printFlag = true;
+        timeCheck(0, HOLDTIME);
       }
-      reset = false;
     }
     else// if we get a letter but its not the same as the last
     {

@@ -64,3 +64,24 @@ boolean timer1(unsigned long time, boolean reset)
   }
   return false;//fall thru case
 }
+
+//----------------------------- experimental timers 
+unsigned long timers[2][4] = {};// create 4 global timers to modify among two functions
+//set timer
+void timeCheck(byte whichTimer, unsigned long durration)
+{
+  timers[1][whichTimer]=durration;
+  timers[0][whichTimer]=millis();
+}
+//check timer
+boolean timeCheck(byte whichTimer)
+{
+  if(millis() - timers[0][whichTimer] > timers[1][whichTimer])
+  {
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}

@@ -19,7 +19,7 @@ void pagersUp()
 }
 //-------------- addressing---------------
 
-void patternVibrate(byte pins)
+void patternVibrate(byte pins)//
 {
   for (byte i=0; i<NUMPAGERS; i++) // !! only the first 6 bits from the least significant are necisarry !!
   {//!! convert to read from least significant bit!!
@@ -58,7 +58,7 @@ void patternSerial(byte pins)
   Serial.println();
 }
 
-boolean vibMessage(char message[], int mSpeed)
+boolean hapticMessage(char message[], int mSpeed)
 {//returns a true when message is done
   static int pos = 0;
   static boolean switchFlag = false;
@@ -73,9 +73,10 @@ boolean vibMessage(char message[], int mSpeed)
   {//given there is a char in the array
     if(startChar)
     {
-      Serial.print(message[pos]);
+      //Serial.print(message[pos]);
+      bluePrint(message[pos]);
       patternVibrate(brailleConvert(message[pos]));
-      patternSerial(brailleConvert(message[pos]));
+      //patternSerial(brailleConvert(message[pos]));
       startChar=false;
     }
     else if(switchFlag)
@@ -126,20 +127,4 @@ void anotherTest(int time)
   }
 }
 
-void brailleTesting()
-{
-  static byte count = 0;
-
-  if (vibMessage(" abcdefghijklmnopqrstuvwxyz ", 4000))
-  {
-    Serial.println();
-    count++;
-  }
-  if (count == 4)
-  {
-    while(1){
-      ;
-    }
-  }
-}
 

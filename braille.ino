@@ -26,6 +26,7 @@ void loop()
   char input = ifBraille(capState()); //if the input is valid braille sample it
   inputIntention(input); //  filter input to "human intents" and print over bluetooth
   hapticFeedback(input); //provide a haptic response
+  learningGame(capState()); // game that helps learn braille input
 }
 
 // ---------------Main functions--------------------
@@ -83,6 +84,35 @@ void inputIntention(char letter)
   }
 
   lastLetter = letter;
+}
+
+void learningGame(byte input)
+{ // in this game the micro "touches" the user with a message and the user copies it
+  if ( input == 128 )
+  {
+    byte gameInput = capState();// var definition
+    timeCheck(2, 500);
+    while( gameInput != 128)
+    {// artificial main loop for game mode
+      gameInput = capState();
+      char letter = ifBraille(gameInput);
+      promptMessage();
+      gatherResponse();
+      if (gameInput==128 && !timeCheck(2))
+      {
+        gameInput=0;
+      }
+    }
+  }
+}
+
+void promptMessage()
+{
+  hapticMessage("hello show and tell ", 800);
+}
+
+void gatherResponse()
+{
 }
 
 

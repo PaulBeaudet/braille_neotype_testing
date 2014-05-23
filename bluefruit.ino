@@ -53,12 +53,28 @@ void blueUp()
 
 //-----------------------GENERAL ------------------
 void bluePrint(char key)
-{
-  BT.write(key);
+{// base blueprint that only takes a single key and prints it
+  if(key==8)
+  {// if this was set up right maybe only a direct pass would be nessisary
+    BT.write(BACK);
+  }
+  else
+  {
+    BT.write(key);
+    //Serial.print(key);//debugging 
+  }
 }
 
-void bluePrint(char input[])// take a char array or line in "quotes"
-{
+void bluePrint(char key, int presses)
+{// blueprint that takes number of presses argument
+  for(int i=0;i<presses;i++)
+  {
+    bluePrint(key);
+  }
+}
+
+void bluePrint(char input[])
+{// blueprint that takes a char array or line in "quotes"
   int i = 0;
   while (input[i])
   {
@@ -73,29 +89,7 @@ void bluePrintln(char input[])// take a char array or line in "quotes"
   BT.write(KEY_RETURN);
 }
 
-
-void pressKeys(int presses, char key)
-{
-  for(int i=0;i<presses;i++)
-  {
-    BT.write(key);
-  }
-}
-
 //HID only / serial creative (new lining reproduction)
-void backSpace()
-{
-  BT.write(BACK);
-}
-
-void backSpace(int increment)
-{
-  for(int i=0;i<increment;i++)
-  {
-    BT.write(BACK);
-  }
-}
-
 void enter()
 {
   BT.write(KEY_RETURN);
@@ -131,27 +125,7 @@ void blueBraille(byte pads)
   }
 }
 
-//---------------------------------------------------
-
-void btShiftPrint(char letter, boolean caps)
-{
-  if(letter==8)
-  {
-    BT.write(BACK);
-  }
-  else if(caps && letter > 32)
-  {// upperflag capitilizes letters
-    char newLetter= letter - 32;
-    BT.write(newLetter);// ex. "a" = 97: 97 - 32 = 65: 65 = "A"
-    Serial.print(newLetter);
-  }
-  else
-  {
-    BT.write(letter);
-    Serial.print(letter);
-  }
-}
-
+//--------------------------------------------------- testing
 void blueTesting()
 {
   static char count = '1';

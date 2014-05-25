@@ -70,8 +70,7 @@ void learningGame(byte input)
     while( gameInput != 128)
     {// artificial main loop for game mode
       gameInput = capState();// sample the input
-      char letter = ifBraille(gameInput);
-      callAndResponse(letter);// display the message to copy and expect its reponse
+      callAndResponse(ifBraille(gameInput));// display the message to copy and expect its reponse
       if (gameInput==128 && !timeCheck(OPENLOOP))
       {// wait to recive a mode change; prevents expidited loop exit
         gameInput=0;
@@ -92,10 +91,7 @@ void callAndResponse(char letter)
       ;
     }
   }
-  else if (letterBack == 0)
-  {
-  }
-  else
+  else if (letterBack)
   {
     bluePrint(letterBack);
   }

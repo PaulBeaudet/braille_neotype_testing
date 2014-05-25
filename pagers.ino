@@ -2,7 +2,7 @@
 #define MIRCOPAGER 11,12,9,10,6,5,
 byte pagers[]=
 {//arangement for the spark neomouse 
-   2,3,4,5,6,7// NOTE ---set the desired button pins here--- NOTE
+  2,3,4,5,6,7// NOTE ---set the desired button pins here--- NOTE
 };//these really need to be assigned in corrispondence with the input pin arrangement
 //starting from least significant bit on
 
@@ -34,73 +34,59 @@ void patternVibrate(byte pins)//
   }
 }
 
-void patternSerial(byte pins)
-{
-  byte flag=false;
-  Serial.println(pins);
+//------------------haptic logic--------------------
+void hapticMessage(char letter) // intializing function
+{ // set a letter to be "played"
+  timeCheck(HAPTIC, hapticTiming);
+  patternVibrate(brailleConvert(letter));
+}
+
+boolean hapticMessage() 
+{ // updating function 
+  static boolean touchPause= 0;
   
-  for (byte i=0; i<NUMPAGERS; i++) // !! only the first 6 bits from the least significant are necisarry !!
-  {//!! convert to read from least significant bit!!
-    if (pins & (1 << i)) // show desired bit (pin)
-    { // imagine incoming byte as an array of 8 bits, one for each pager
-      Serial.write('1');
+  if(timeCheck(HAPTIC))
+  {//time to "display" a touch has elapsed
+    if(touchPause)
+    {//this case allows for a pause after "display"
+      touchPause=!touchPause;
+      return true;
     }
     else
     {
-      Serial.write('0');
+      touchPause=!touchPause;
+      patternVibrate(0);//stop the message
+      timeCheck(HAPTIC, hapticTiming/2);
     }
-    if(flag)
-    {
-      Serial.println();
-    }
-    flag=!flag;
   }
-  Serial.println();
+  return false;
 }
 
-boolean hapticMessage(char message[], int mSpeed)
-{//returns a true when message is done
-  static int pos = 0;
-  static boolean switchFlag = false;
-  static boolean startChar = true;
+char hapticMessage(char message[])
+{
+  static byte possition = 0;
 
-  if (!mSpeed)//default behavior when set to zero
-  {// default arguments cause copilation errors in the arduino ide
-    mSpeed = 50;//in this way 75 ms is the durration of a char 'buzz'
-  } 
+  char onLetter = message[possition];
 
-  if (message[pos])
-  {//given there is a char in the array
-    if(startChar)
-    {
-      //Serial.print(message[pos]);
-      bluePrint(message[pos]);
-      patternVibrate(brailleConvert(message[pos]));
-      //patternSerial(brailleConvert(message[pos]));
-      startChar=false;
-    }
-    else if(switchFlag)
-    {// have we got to the pause yet
-      if (timer(mSpeed/2))//wait for the end of the pause phase
-      {
-        pos++;//increment to the char in the message
-        switchFlag = false; //change the flag for the next phase
-        startChar = true; 
-      }
-    }
-    else if(timer(mSpeed))//wait for the end of the message phase
-    {
-      patternVibrate(0); // init pause phase
-      switchFlag = true; // signify pause phase
-    };
-    return false;
-  }
-  else
+  if(!onLetter)
   {
-    pos = 0; // reinstate pos for another message
-    return true; // signify message is done
+    possition = 0;
+    while (!hapticMessage())
+    {//finish last "touch"
+      ; //figure out how to get rid of this pause latter
+    }
+    return -128;//signal the message is done
   }
+  
+  if (hapticMessage())//refresh display
+  {
+    hapticMessage(onLetter);
+    possition++;
+    return onLetter;
+  }
+  return 0;
 }
+
 
 char brailleConvert(char letter)
 {
@@ -111,20 +97,10 @@ char brailleConvert(char letter)
       return pgm_read_byte(&byteToBraille[1][i]);
     }// return the corrisponding translation
   }
-  Serial.print("err");//testing case there is no pass thru
-  //return letter;//pass through non translating chars
 }
 
-//--------------------------------    testing 
 
-void anotherTest(int time)
-{
-  for(byte i=0;i<NUMPAGERS;i++)
-  {
-    digitalWrite(pagers[i], HIGH);
-    delay(time);
-    digitalWrite(pagers[i], LOW);
-  }
-}
+
+
 
 

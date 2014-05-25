@@ -13,6 +13,16 @@ prog_char const byteToBraille [2][ENCODEAMT] // write convertion data to persist
     32, 30, 1 , 5 , 3 , 11, 9 , 7 , 15, 13, 6 , 14, 17, 21, 19, 27, 25, 23, 31, 29, 22, 49, 53, 46, 51, 59, 57 ,64,     } 
 };//each bit in the corrisponding bytes represents a "bump" state
 
+//Timers
+#define PRESS 0 // Timing for a capacitive press to "count"
+#define HOLD 1  // Timing for a hold to "count"
+#define OPENLOOP 2// Timing to enter alternitive modes with a key; as such key would enter and exit mode in same touch w/out
+#define HAPTIC 3 // timer for haptic messages
+//Assosiated Timings
+#define BOUNCETIME 50 //ms
+#define HOLDTIME 500 //ms
+word hapticTiming = 800; //ms, controls haptic display durration, Future; will be user adjustable 
+
 void setup()
 {
   pagersUp();//set the pager pins as outputs
@@ -23,34 +33,87 @@ void setup()
 
 void loop()
 {
-  char input = ifBraille(capState()); //if the input is valid braille sample it
-  hapticFeedback(input); //provide a haptic response
-  input = inputIntention(input); //  filter input to "human intents"
-  if (input) // if a human intentended keystroke was detected
-  {
-    bluePrint(input);// send a keystroke to the bluefruit!
-  }
-  //learningGame(capState()); // game that helps learn braille input
+  char inputState = capState(); // sample the capcitive input
+  outputCondition(inputState); // default output condition loop
+  learningGame(inputState); // game that helps learn braille input and output
 }
 
 // ---------------Main functions--------------------
 
-void hapticFeedback(byte input)
+void outputCondition(byte input)
 {
-  if(input)
-  {//only actuate when given data
-    patternVibrate(input);//provides haptic feedback for keystroke
+  input=ifBraille(input);//filter the input to valid braille or 0 
+  if(input) // given the input is in the braille char map
+  {
+    patternVibrate(input);//provide haptic feedback for keystroke  
   }
   else
   {
-    patternVibrate(0);
+    patternVibrate(0); // if not stop previous stroke
   };
+  input=inputIntention(input);//  further filter input to "human intents" 
+  if(input)// given one time intent has been discerned 
+  {
+    bluePrint(input);// send a keystroke to the bluefruit!
+  }
 }
 
-#define BOUNCETIME 50 //ms
-#define HOLDTIME 500 //ms
-#define PRESS 0 // maybe the numbers of timer functions can be enumerated in the future
-#define HOLD 1  // in order to avoid conflicts
+
+//----------------------------game-------------------
+
+void learningGame(byte input)
+{ // in this game the micro "touches" the user with a message and the user copies it
+  if ( input == 128 )
+  {
+    byte gameInput = capState();// var definition
+    timeCheck(OPENLOOP, HOLD); // loop exit timer
+    while( gameInput != 128)
+    {// artificial main loop for game mode
+      gameInput = capState();// sample the input
+      char letter = ifBraille(gameInput);
+      callAndResponse(letter);// display the message to copy and expect its reponse
+      if (gameInput==128 && !timeCheck(OPENLOOP))
+      {// wait to recive a mode change; prevents expidited loop exit
+        gameInput=0;
+      }
+    }
+  }
+}
+
+void callAndResponse(char letter)
+{
+  //static byte userProgress = 0;
+  char letterBack = hapticMessage("test ");
+  if (letterBack == -128)
+  {
+    while(capState() != 128)
+    {
+      hapticMessage();//allow things to wrap up
+      ;
+    }
+  }
+  else if (letterBack == 0)
+  {
+  }
+  else
+  {
+    bluePrint(letterBack);
+  }
+  
+}
+
+// ------------ filters -----------------
+byte ifBraille(uint8_t combination)
+{//checks for valid usage in the character map
+  for(byte i=0; i<ENCODEAMT;i++)
+  {
+    if(combination == pgm_read_byte(&byteToBraille[1][i]))
+    {// for a corrisponding translation
+      return pgm_read_byte(&byteToBraille[0][i]);
+    }// return the matching letter in the array
+  }
+  return 0; // no matches try again
+}
 
 char inputIntention(char letter)
 {//clasifies human intention, returns intended letter
@@ -97,41 +160,6 @@ char inputIntention(char letter)
   lastLetter = letter;
   return 0;// return the false case in the event of no intentions 
 }
-
-//----------------------------game-------------------
-
-void learningGame(byte input)
-{ // in this game the micro "touches" the user with a message and the user copies it
-  if ( input == 128 )
-  {
-    byte gameInput = capState();// var definition
-    timeCheck(2, 500); // loop exit timer
-    while( gameInput != 128)
-    {// artificial main loop for game mode
-      gameInput = capState();// sample the input
-      char letter = ifBraille(gameInput);
-      callAndResponse(letter);// display the message to copy and expect its reponse
-      if (gameInput==128 && !timeCheck(2))
-      {// wait to recive a mode change; prevents expidited loop exit
-        gameInput=0;
-      }
-    }
-  }
-}
-
-void callAndResponse(char letter)
-{
-  static byte userProgress = 0;
-
-  if (hapticMessage("lets play a game ", 800))
-  {
-    
-  }
-  
-  //letter = inputIntention(letter);
-}
-
-
 
 
 

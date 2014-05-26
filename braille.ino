@@ -7,10 +7,10 @@
 prog_char const byteToBraille [2][ENCODEAMT] // write convertion data to persistent memory to save ram
 {
   { // input in characters
-    ' ','t','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','u','v','w','x','y','z', 8,     }
+    ' ','t','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','u','v','w','x','y','z', 8,         }
   ,
   { //corrisponding braille binary output in decimal form, read from least significant bit
-    32, 30, 1 , 5 , 3 , 11, 9 , 7 , 15, 13, 6 , 14, 17, 21, 19, 27, 25, 23, 31, 29, 22, 49, 53, 46, 51, 59, 57 ,64,     } 
+    32, 30, 1 , 5 , 3 , 11, 9 , 7 , 15, 13, 6 , 14, 17, 21, 19, 27, 25, 23, 31, 29, 22, 49, 53, 46, 51, 59, 57 ,64,         } 
 };//each bit in the corrisponding bytes represents a "bump" state
 
 //Timers
@@ -47,7 +47,7 @@ void loop()
   learningGame(inputState); // game that helps learn braille input and output
 }
 
-void outputCondition(byte input)
+byte outputCondition(byte input)
 {
   input=ifBraille(input);//filter the input to valid braille or 0 
   if(input) // given the input is in the braille char map
@@ -62,7 +62,9 @@ void outputCondition(byte input)
   if(input)// given one time intent has been discerned 
   {
     bluePrint(input);// send a keystroke to the bluefruit!
+    return input;
   }
+  return 0;
 }
 
 //----------------------------game-------------------
@@ -85,15 +87,30 @@ void learningGame(byte input)
   }
 }
 
+char gameMessage[] = "aaa ";
+
 void callAndResponse(char letter)
 {
   //static byte userProgress = 0;
-  char letterBack = hapticMessage("test ");
+  char letterBack = hapticMessage(gameMessage);
   if (letterBack == -128)
   {
-    while(capState() != 128)
+    byte input = capState();
+    while(input != 128)
     {
-      hapticMessage();//allow things to wrap up
+      input = checkResponse(outputCondition(input));
+      if ( input == 2)
+      {//if the response fails
+        input = toast("wrong");
+      }
+      else if( input == 1)
+      {//winning case
+        input = toast("winning");
+      }
+      else
+      {// neither pass nor fail
+        input = capState();
+      }
     }
   }
   else if (letterBack)
@@ -102,9 +119,46 @@ void callAndResponse(char letter)
   }  
 }
 
+byte toast(char tmessage[])
+{// message the appears and disapears, like the one in android
+  bluePrint(tmessage);
+  while(hapticMessage(tmessage) != -128)
+  {; 
+  }
+  int i=0;
+  while(tmessage[i])
+  {
+    bluePrint(8);
+    i++;
+  }
+  return 128;
+}
+
+byte checkResponse(byte input)
+{
+  static int place = 0;
+  
+  if(input)
+  {
+    if(input == gameMessage[place])
+    {//one letter right case
+      place++;
+      if(!gameMessage[place])
+      {//got to the end of the word!!! success!!!
+        return 1;
+      }
+    }
+    else
+    {//fail case
+      return 2;
+    }
+  }
+  return 0;// default pass nor fail mode
+}
+
 // ------------ filters -----------------
 byte ifBraille(uint8_t combination)
-{//checks for valid usage in the character map
+{//checks for valid usage in the character map and converts to a char
   for(byte i=0; i<ENCODEAMT;i++)
   {
     if(combination == pgm_read_byte(&byteToBraille[1][i]))
@@ -160,6 +214,8 @@ char inputIntention(char letter)
   lastLetter = letter;
   return 0;// return the false case in the event of no intentions 
 }
+
+
 
 
 

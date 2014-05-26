@@ -19,9 +19,11 @@ prog_char const byteToBraille [2][ENCODEAMT] // write convertion data to persist
 #define OPENLOOP 2// Timing to enter alternitive modes with a key; as such key would enter and exit mode in same touch w/out
 #define HAPTIC 3 // timer for haptic messages
 #define BUTTONTIMER 4 // timer for buttons in the case button input instead of capcitive
+#define GESTURETIMER 5 // set time for a gesture to occure
 //Assosiated Timings
 #define BOUNCETIME 50 //ms
 #define HOLDTIME 500 //ms
+#define GESTUREWINDOW 1000//ms
 word hapticTiming = 800; //ms, controls haptic display durration, Future; will be user adjustable 
 //Pinout desired pin usage for components on various boards
 #define UNOPWMPINS 3,5,6,9,10,11,

@@ -17,9 +17,30 @@ void buttonUp()// it's cold out there
 }
 
 //----------------GENERAL -------------------
-#define BOUNCETIME 10//ms anytime grater is to know the buton has settled
-// wait this long to be sure of a legit press
-#define HOLDSTATE 200//ms
+
+word courseOfEvents()
+{ // detection of complex gesture derivitive input
+  static byte lastInput = 0; 
+  static boolean timeFrame = false;
+
+  byte input = debounceEvent();
+
+  if(input || timeFrame)
+  {//if input is coming in or the time frame is open for a gesture
+    if(timeFrame)
+    {
+      // gesturning logic !!!!!!!!!!!!!!!!!!!!!!
+      timeFrame=false;
+      return word(lastInput, input);
+    }
+    else
+    {
+      timeCheck(GESTURETIMER, GESTUREWINDOW);
+      lastInput=input;
+      timeFrame=true;
+    }
+  } 
+}
 
 byte debounceEvent()
 {
@@ -42,6 +63,7 @@ byte debounceEvent()
     else
     {//start the clock
       timeCheck(BUTTONTIMER, BOUNCETIME);
+      timeStart=true;
     };
   }
   else
@@ -68,6 +90,7 @@ byte buttonsSample()
   }
   return sample;
 }
+
 
 
 

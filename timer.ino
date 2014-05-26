@@ -1,4 +1,4 @@
-#define NEEDEDTIMERS 4 //List the amount of timers that will be needed here
+#define NEEDEDTIMERS 5 //List the amount of timers that will be needed here
 //multiply this number by 8 bytes to understand ram footprint
 
 unsigned long timers[2][NEEDEDTIMERS] = {};// create global timers to modify 

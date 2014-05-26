@@ -18,11 +18,18 @@ prog_char const byteToBraille [2][ENCODEAMT] // write convertion data to persist
 #define HOLD 1  // Timing for a hold to "count"
 #define OPENLOOP 2// Timing to enter alternitive modes with a key; as such key would enter and exit mode in same touch w/out
 #define HAPTIC 3 // timer for haptic messages
+#define BUTTONTIMER 4 // timer for buttons in the case button input instead of capcitive
 //Assosiated Timings
 #define BOUNCETIME 50 //ms
 #define HOLDTIME 500 //ms
 word hapticTiming = 800; //ms, controls haptic display durration, Future; will be user adjustable 
+//Pinout desired pin usage for components on various boards
+#define UNOPWMPINS 3,5,6,9,10,11,
+#define MIRCOPAGER 11,12,9,10,6,5,
+#define SPARKBUTTONS D2,D3,D4,D5,D6,D8,
+#define UNOBUTTONS 8,9,10,11,12,13,
 
+// ---------------Main loops and functions--------------------
 void setup()
 {
   pagersUp();//set the pager pins as outputs
@@ -37,8 +44,6 @@ void loop()
   outputCondition(inputState); // default output condition loop
   learningGame(inputState); // game that helps learn braille input and output
 }
-
-// ---------------Main functions--------------------
 
 void outputCondition(byte input)
 {
@@ -57,7 +62,6 @@ void outputCondition(byte input)
     bluePrint(input);// send a keystroke to the bluefruit!
   }
 }
-
 
 //----------------------------game-------------------
 
@@ -88,14 +92,12 @@ void callAndResponse(char letter)
     while(capState() != 128)
     {
       hapticMessage();//allow things to wrap up
-      ;
     }
   }
   else if (letterBack)
   {
     bluePrint(letterBack);
-  }
-  
+  }  
 }
 
 // ------------ filters -----------------

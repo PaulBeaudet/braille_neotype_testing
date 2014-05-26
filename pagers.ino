@@ -1,5 +1,5 @@
-#define UNOPWMPINS 3,5,6,9,10,11,
-#define MIRCOPAGER 11,12,9,10,6,5,
+//Pagers
+
 byte pagers[]=
 {//arangement for the spark neomouse 
   2,3,4,5,6,7// NOTE ---set the desired button pins here--- NOTE

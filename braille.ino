@@ -7,10 +7,10 @@
 prog_char const byteToBraille [2][ENCODEAMT] // write convertion data to persistent memory to save ram
 {
   { // input in characters
-    ' ','t','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','u','v','w','x','y','z', 8,         }
+    ' ','t','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','u','v','w','x','y','z', 8,                       }
   ,
   { //corrisponding braille binary output in decimal form, read from least significant bit
-    32, 30, 1 , 5 , 3 , 11, 9 , 7 , 15, 13, 6 , 14, 17, 21, 19, 27, 25, 23, 31, 29, 22, 49, 53, 46, 51, 59, 57 ,64,         } 
+    32, 30, 1 , 5 , 3 , 11, 9 , 7 , 15, 13, 6 , 14, 17, 21, 19, 27, 25, 23, 31, 29, 22, 49, 53, 46, 51, 59, 57 ,64,                      } 
 };//each bit in the corrisponding bytes represents a "bump" state
 
 //Timers
@@ -42,14 +42,15 @@ void setup()
 
 void loop()
 {
-  char inputState = capState(); // sample the capcitive input
-  outputCondition(inputState); // default output condition loop
-  learningGame(inputState); // game that helps learn braille input and output
+  if (outputCondition(capState()) == 128) // default output condition loop
+  {
+    modeKey(); // creates an alternitive loop base on a "function" or "mode" key
+  }
 }
 
 byte outputCondition(byte input)
 {
-  input=ifBraille(input);//filter the input to valid braille or 0 
+  input=ifBraille(input);//filter the input to valid braille or 0  
   if(input) // given the input is in the braille char map
   {
     patternVibrate(input);//provide haptic feedback for keystroke  
@@ -58,9 +59,13 @@ byte outputCondition(byte input)
   {
     patternVibrate(0); // if not stop previous stroke
   };
-  input=inputIntention(input);//  further filter input to "human intents" 
+  input=inputIntention(input);//  further filter input to "human intents"
   if(input)// given one time intent has been discerned 
   {
+    if(input==128)
+    {
+      return 128;
+    }
     bluePrint(input);// send a keystroke to the bluefruit!
     return input;
   }
@@ -69,75 +74,50 @@ byte outputCondition(byte input)
 
 //----------------------------game-------------------
 
-void learningGame(byte input)
-{ // in this game the micro "touches" the user with a message and the user copies it
-  if ( input == 128 )
-  {
-    byte gameInput = capState();// var definition
-    timeCheck(OPENLOOP, HOLD); // loop exit timer
-    while( gameInput != 128)
-    {// artificial main loop for game mode
-      gameInput = capState();// sample the input
-      callAndResponse(ifBraille(gameInput));// display the message to copy and expect its reponse
-      if (gameInput==128 && !timeCheck(OPENLOOP))
-      {// wait to recive a mode change; prevents expidited loop exit
-        gameInput=0;
-      }
+void modeKey()
+{ // in this game the micro "touches" the user with a message and the user copies 
+  while(1)
+  {// artificial main loop for game mode
+    byte input = outputCondition(capState());// sample the input for loop condition and responce
+    if(input == 128)
+    {
+      return;
     }
+    callAndResponse(input);// display the message to copy and expect its reponse   
   }
 }
 
 char gameMessage[] = "aaa ";
 
-void callAndResponse(char letter)
+void callAndResponse(byte letter)
 {
-  //static byte userProgress = 0;
-  char letterBack = hapticMessage(gameMessage);
-  if (letterBack == -128)
-  {
-    byte input = capState();
-    while(input != 128)
-    {
-      input = checkResponse(outputCondition(input));
-      if ( input == 2)
-      {//if the response fails
-        input = toast("wrong");
-      }
-      else if( input == 1)
-      {//winning case
-        input = toast("winning");
-      }
-      else
-      {// neither pass nor fail
-        input = capState();
-      }
-    }
-  }
-  else if (letterBack)
-  {
-    bluePrint(letterBack);
-  }  
-}
+  static boolean messageFlag = true;
 
-byte toast(char tmessage[])
-{// message the appears and disapears, like the one in android
-  bluePrint(tmessage);
-  while(hapticMessage(tmessage) != -128)
-  {; 
+  if(messageFlag)
+  {// call mode
+    toast(gameMessage);
+    messageFlag=false;// message is done, set to response mode      
   }
-  int i=0;
-  while(tmessage[i])
-  {
-    bluePrint(8);
-    i++;
-  }
-  return 128;
+  else
+  {// response mode
+    byte result = checkResponse(letter);
+    if (result == 2)
+    {
+      toast("fail");
+      messageFlag = true;
+    }
+    else if (result == 1)
+    {
+      toast("win");
+      messageFlag = true;
+    };
+  };
 }
 
 byte checkResponse(byte input)
 {
   static int place = 0;
-  
+
   if(input)
   {
     if(input == gameMessage[place])
@@ -145,20 +125,41 @@ byte checkResponse(byte input)
       place++;
       if(!gameMessage[place])
       {//got to the end of the word!!! success!!!
+        place = 0;
         return 1;
       }
     }
     else
     {//fail case
+      place = 0;
       return 2;
     }
   }
   return 0;// default pass nor fail mode
 }
 
+void toast(char tmessage[])
+{// message the appears and disapears, like the one in android
+  bluePrint(tmessage);
+  while(hapticMessage(tmessage) != -128)
+  {
+    ; 
+  }
+  int i=0;
+  while(tmessage[i])
+  {
+    bluePrint(8);
+    i++;
+  }
+}
+
 // ------------ filters -----------------
-byte ifBraille(uint8_t combination)
+byte ifBraille(byte combination)
 {//checks for valid usage in the character map and converts to a char
+  if (combination==128)
+  {
+    return 128;
+  }
   for(byte i=0; i<ENCODEAMT;i++)
   {
     if(combination == pgm_read_byte(&byteToBraille[1][i]))
@@ -169,9 +170,9 @@ byte ifBraille(uint8_t combination)
   return 0; // no matches try again
 }
 
-char inputIntention(char letter)
+byte inputIntention(byte letter)
 {//clasifies human intention, returns intended letter
-  static char lastLetter= 0;
+  static byte lastLetter= 0;
   static boolean printFlag = 0;
   static boolean upperFlag = 0;
 
@@ -200,6 +201,11 @@ char inputIntention(char letter)
   else if(printFlag)
   {// if the chord as been let go and there was a lagit key last time
     printFlag= false;
+    if ( lastLetter == 128)
+    {
+      upperFlag= false;
+      return lastLetter;
+    }
     if(upperFlag && lastLetter > 32)
     {// upperflag capitilizes letters given hold state
       lastLetter= lastLetter - 32;
@@ -214,6 +220,13 @@ char inputIntention(char letter)
   lastLetter = letter;
   return 0;// return the false case in the event of no intentions 
 }
+
+
+
+
+
+
+
 
 
 

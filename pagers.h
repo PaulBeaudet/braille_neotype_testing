@@ -1,4 +1,31 @@
 //Pagers //Haptic feedback hardware
+
+uint32_t ptimer[2][1] = {};// create global timers to modify 
+
+void ptimeCheck(byte whichTimer, uint32_t durration)
+{//used for setting the durration of the timer
+  ptimer[1][whichTimer]=durration; //set durration
+  ptimer[0][whichTimer]=millis();  // note the time set
+}
+
+boolean ptimeCheck(byte whichTimer)
+{//used for checking the timer
+  if(millis() - ptimer[0][whichTimer] > ptimer[1][whichTimer])
+  {// if the durration has elapsed
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}
+
+#define HAPTIC 0 // timer for haptic messages
+int hapticTiming = 800; //ms, controls haptic display durration, Future; will be user adjustable 
+
+//Pinout desired pin usage for components on various boards
+#define UNOPWMPINS 3,5,6,9,10,11,
+#define MIRCOPAGER 11,12,9,10,6,5,
 #define SPARKPWM A0,A4,A1,A5,A7,A6,
 byte pagers[]=
 {//arangement for the spark neomouse 
@@ -47,70 +74,6 @@ void patternVibrate(byte pins, byte pwm)//
     {
       analogWrite(pagers[i], 0);
     }
-  }
-}
-//------------------haptic logic--------------------
-void hapticMessage(char letter) // intializing function
-{ // set a letter to be "played"
-  timeCheck(HAPTIC, hapticTiming);
-  patternVibrate(brailleConvert(letter));
-}
-
-boolean hapticMessage() 
-{ // updating function 
-  static boolean touchPause= 0;
-  
-  if(timeCheck(HAPTIC))
-  {//time to "display" a touch has elapsed
-    if(touchPause)
-    {//this case allows for a pause after "display"
-      touchPause=!touchPause;
-      return true;
-    }
-    else
-    {
-      touchPause=!touchPause;
-      patternVibrate(0);//stop the message
-      timeCheck(HAPTIC, hapticTiming/2);
-    }
-  }
-  return false;
-}
-
-char hapticMessage(char message[])
-{// haptic message char* needs to be repaired!!!
-  static byte possition = 0;
-
-  char onLetter = message[possition];
-
-  if(!onLetter)
-  {
-    possition = 0;
-    while (!hapticMessage())
-    {//finish last "touch"
-      ; //figure out how to get rid of this pause latter
-    }
-    return -128;//signal the message is done
-  }
-  
-  if (hapticMessage())//refresh display
-  {
-    hapticMessage(onLetter);
-    possition++;
-    return onLetter;
-  }
-  return 0;
-}
-
-
-char brailleConvert(char letter)
-{
-  for(byte i=0; i<ENCODEAMT;i++)
-  {
-    if(letter == pgm_read_byte(&byteToBraille[0][i]))
-    {// for a matching letter in the array
-      return pgm_read_byte(&byteToBraille[1][i]);
-    }// return the corrisponding translation
   }
 }
 

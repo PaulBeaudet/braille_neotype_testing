@@ -1,4 +1,37 @@
 //buttons
+#define NEEDEDTIMERS 3 //List the amount of timers that will be needed here
+//multiply this number by 8 bytes to understand ram footprint
+
+uint32_t timers[2][NEEDEDTIMERS] = {};// create global timers to modify 
+
+void timeCheck(byte whichTimer, uint32_t durration)
+{//used for setting the durration of the timer
+  timers[1][whichTimer]=durration; //set durration
+  timers[0][whichTimer]=millis();  // note the time set
+}
+
+bool timeCheck(byte whichTimer)
+{//used for checking the timer
+  if(millis() - timers[0][whichTimer] > timers[1][whichTimer])
+  {// if the durration has elapsed
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}
+
+//timers
+#define PRESS 0 // Timing for a capacitive press to "count"
+#define HOLD 1  // Timing for a hold to "count"
+#define BUTTONTIMER 2 // timer for buttons in the case button input instead of capcitive
+//Assosiated Timings
+#define BOUNCETIME 50 //ms
+#define HOLDTIME 500 //ms
+
+#define SPARKBUTTONS D2,D3,D4,D5,D6,D7,A2,A3,
+#define UNOBUTTONS 8,9,10,11,12,13,
 
 byte buttons[]=
 {//usb lilypad arrangement
@@ -18,35 +51,28 @@ void buttonUp()// it's cold out there
 
 //----------------GENERAL -------------------
 
-word courseOfEvents()
-{ // detection of complex gesture derivitive input
-  static byte lastInput = 0; 
-  static boolean timeFrame = false;
-
-  byte input = debounceEvent();
-
-  if(input || timeFrame)
-  {//if input is coming in or the time frame is open for a gesture
-    if(timeFrame)
+byte buttonsSample()
+{
+  byte sample=0;
+  for (byte i=0; i<NUMBUTTONS; i++) // 
+  {
+    if(digitalRead(buttons[i]) == LOW)
     {
-      // gesturning logic !!!!!!!!!!!!!!!!!!!!!!
-      timeFrame=false;
-      return word(lastInput, input);
+      bitWrite(sample, i, 1); // set the selected bit high !!
     }
     else
     {
-      timeCheck(GESTURETIMER, GESTUREWINDOW);
-      lastInput=input;
-      timeFrame=true;
-    }
-  } 
+      bitWrite(sample, i, 0); // set the selected bit low !!
+    }  
+  }
+  return sample;
 }
 
-byte debounceEvent()
+byte debouncedInput()
 {
   static byte pinState= 0;
   static byte lastState= 0;
-  static boolean timeStart = false;
+  static bool timeStart = false;
 
   pinState=buttonsSample();
 
@@ -73,22 +99,57 @@ byte debounceEvent()
   lastState=pinState;
   return 0; // nothing happend
 }
+// ------------ filters -----------------
 
-byte buttonsSample()
-{
-  byte sample=0;
-  for (byte i=0; i<NUMBUTTONS; i++) // 
-  {
-    if(digitalRead(buttons[i]) == LOW)
+byte inputIntention(byte letter)
+{//clasifies human intention, returns intended letter
+  static byte lastLetter= 0;
+  static bool printFlag = 0;
+  static bool upperFlag = 0;
+
+  if (letter)
+  {// given we are dealing with a value other then zero
+    if (letter==lastLetter)
     {
-      bitWrite(sample, i, 1); // set the selected bit high !!
+      if(printFlag)
+      {// if the go ahead to print has been flagged then holds can detected
+        if (timeCheck(HOLD))
+        {//if the hold timer elapses then flag for and upper case
+          upperFlag= true;
+        }
+      }
+      else if (timeCheck(PRESS))
+      {
+        printFlag = true;
+        timeCheck(HOLD, HOLDTIME);
+      }
     }
     else
     {
-      bitWrite(sample, i, 0); // set the selected bit low !!
-    }  
+      timeCheck(PRESS, BOUNCETIME);
+    }
   }
-  return sample;
+  else if(printFlag)
+  {// if the chord as been let go and there was a lagit key last time
+    printFlag= false;
+    if ( lastLetter == 128)
+    {
+      upperFlag= false;
+      return lastLetter;
+    }
+    if(upperFlag && lastLetter > 32)
+    {// upperflag capitilizes letters given hold state
+      lastLetter= lastLetter - 32;
+      upperFlag= false;
+      return lastLetter;// ex. "a" = 97: 97 - 32 = 65: 65 = "A"
+    }
+    else
+    {
+      return lastLetter;
+    }
+  }
+  lastLetter = letter;
+  return 0;// return the false case in the event of no intentions 
 }
 
 

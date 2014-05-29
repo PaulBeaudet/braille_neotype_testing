@@ -86,39 +86,4 @@ void bluePrintln(char input[])// take a char array or line in "quotes"
   Serial1.write(KEY_RETURN);
 }
 
-//HID only / serial creative (new lining reproduction)
-void enter()
-{
-  Serial1.write(KEY_RETURN);
-}
-
-void movement(int increment, boolean bearing)
-{
-  char going;
-  if(bearing)//if true aka 1
-  {
-    going=KEY_LEFT_ARROW;//LEFT=1 defined golobally
-  }
-  else//if false aka 0
-  {
-    going=KEY_RIGHT_ARROW;//RIGHT=0 defined golobally
-  }
-  for (int i=0;i<increment;i++)
-  {//go that direction as many times as asked
-    Serial1.write(going);
-  }
-}
-
-//------ braille particular -----------
-
-void blueBraille(byte pads)
-{
-  for(byte i=0; i<ENCODEAMT; i++)
-  {
-    if(pads == pgm_read_byte(&byteToBraille[1][i]))
-    {
-      Serial1.write(pgm_read_byte(&byteToBraille[0][i])); 
-    }
-  }
-}
 

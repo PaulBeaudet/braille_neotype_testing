@@ -1,6 +1,10 @@
 //braille.ino--- This sketch uses is meant for the cap1188 breakout and a corrisponding darlington array
 // of pager motors. All in order to feel and transmit brialle. Transmission via bluefruit
 #include<avr/pgmspace.h>//explicitly stated read only memory
+#inclued bluefruit.h
+#inclued pagers.h
+#inclued buttons.h
+#inclued debug.h
 
 // brialle convertion array
 #define ENCODEAMT 28 // size is defined to structure iteration amount
@@ -28,7 +32,7 @@ word hapticTiming = 800; //ms, controls haptic display durration, Future; will b
 //Pinout desired pin usage for components on various boards
 #define UNOPWMPINS 3,5,6,9,10,11,
 #define MIRCOPAGER 11,12,9,10,6,5,
-#define SPARKBUTTONS D2,D3,D4,D5,D6,D8,
+#define SPARKBUTTONS D2,D3,D4,D5,D6,D8,A2,A3,
 #define UNOBUTTONS 8,9,10,11,12,13,
 
 // ---------------Main loops and functions--------------------
@@ -36,13 +40,12 @@ void setup()
 {
   pagersUp();//set the pager pins as outputs
   blueUp();//set-up the bluefruit interface
-  capSetup();//set up the cap1188 breakout for capcitive touch
-  debugSetup();//bring up serial, set pin 13 for the built in led
+  buttonUp();//set up the cap1188 breakout for capcitive touch
 }
 
 void loop()
 {
-  if (outputCondition(capState()) == 128) // default output condition loop
+  if (outputCondition(debouncedInput()) == 128) // default output condition loop
   {
     modeKey(); // creates an alternitive loop base on a "function" or "mode" key
   }
@@ -78,7 +81,7 @@ void modeKey()
 { // in this game the micro "touches" the user with a message and the user copies 
   while(1)
   {// artificial main loop for game mode
-    byte input = outputCondition(capState());// sample the input for loop condition and responce
+    byte input = outputCondition(debouncedInput());// sample the input for loop condition and responce
     if(input == 128)
     {
       return;
@@ -220,17 +223,3 @@ byte inputIntention(byte letter)
   lastLetter = letter;
   return 0;// return the false case in the event of no intentions 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

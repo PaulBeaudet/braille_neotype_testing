@@ -1,5 +1,11 @@
 //buttons
-#define NEEDEDTIMERS 3 //List the amount of timers that will be needed here
+
+#define bitRead(value, bit) (((value) >> (bit)) & 0x01)
+#define bitSet(value, bit) ((value) |= (1UL << (bit)))
+#define bitClear(value, bit) ((value) &= ~(1UL << (bit)))
+#define bitWrite(value, bit, bitvalue) (bitvalue ? bitSet(value, bit) : bitClear(value, bit))
+
+#define NEEDEDTIMERS 3//List the amount of timers that will be needed here
 //multiply this number by 8 bytes to understand ram footprint
 
 uint32_t timers[2][NEEDEDTIMERS] = {};// create global timers to modify 
@@ -28,7 +34,7 @@ bool timeCheck(byte whichTimer)
 #define BUTTONTIMER 2 // timer for buttons in the case button input instead of capcitive
 //Assosiated Timings
 #define BOUNCETIME 50 //ms
-#define HOLDTIME 500 //ms
+#define HOLDTIME 200 //ms
 
 #define SPARKBUTTONS D2,D3,D4,D5,D6,D7,A2,A3,
 #define UNOBUTTONS 8,9,10,11,12,13,
@@ -50,6 +56,35 @@ void buttonUp()// it's cold out there
 }
 
 //----------------GENERAL -------------------
+
+byte pressEvent(byte button)
+{//checks for a debounced button press event
+  static uint32_t time = millis();
+  static bool timingState = 0;
+  
+  if ( digitalRead(button) == 0) // low is a press with the pullup
+  {// if the button has been pressed
+    if(timingState)
+    { // given the timer has started
+      if ( millis() - time > BOUNCETIME)
+      { // check if the bounce time has elapesed 
+        if ( millis() - time > HOLDTIME)
+        {//in case the button is held longer return state 2
+          return 2;// held press
+        }//keep in mind this function can still be read as a boolean 
+        // as anything greater than 0 is = true
+        return 1;//debounced press
+      }  
+      return 0;//return without changing timing state 
+    }
+    timingState = 1; // note that the timing state is set
+    time = millis();//placemark when time press event started
+    return 0; // return with the timestate placeholder set
+  }
+  //outside of eventcases given no reading
+  timingState = 0; //in case the timing state was set, unset
+  return 0;//not pressed
+}
 
 byte buttonsSample()
 {

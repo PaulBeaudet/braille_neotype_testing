@@ -13,6 +13,15 @@ void setup()
 
 void loop()
 {
+  //mainLoop();
+  if(pressEvent(A3))
+  {
+    test();
+  }
+}
+
+void mainLoop()
+{  
   if (outputCondition(debouncedInput()) == 128) // default output condition loop
   {
     modeKey(); // creates an alternitive loop base on a "function" or "mode" key

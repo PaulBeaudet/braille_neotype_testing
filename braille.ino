@@ -13,100 +13,62 @@ void setup()
 
 void loop()
 {
-  mainLoop();
+  mainLoop(buttonsSample());
 }
 
-void mainLoop()
-{  
-  if (outputCondition(buttonsSample()) == 128) // default output condition loop
-  {
-    modeKey(); // creates an alternitive loop base on a "function" or "mode" key
-  }
-}
+void mainLoop(byte input)
+{// mainloop is abstracted for testing purposes 
+  static bool modeFlag = 0;
 
-byte outputCondition(byte input)
-{
-  byte actionableSample= ifBraille(input);
+  byte actionableSample= ifBraille(input);  
   if(actionableSample)//filter the input to valid braille or 0
   {
     hapticResponce(input);
-    actionableSample=debouncedInput(actionableSample);//  further filter input to "human intents"
+    actionableSample=holdFilter(actionableSample);//  further filter input to "human intents"
     if(actionableSample==128)
     {
-      return 128;
-    }
-    Serial1.write(actionableSample);// send a keystroke to the bluefruit!
-    return actionableSample;
-  }// turn the pagers on or off
-  hapticResponce(0);
-  return 0;
-}
-
-void modeKey()
-{ // in this game the micro "touches" the user with a message and the user copies 
-  while(1)
-  {// artificial main loop for game mode
-    byte input = outputCondition(buttonsSample());// sample the input for loop condition and responce
-    if(input == 128)
-    {
+      modeFlag=!modeFlag;
       return;
-    }
-    callAndResponse(input);// display the message to copy and expect its reponse   
-  }
+    }   
+    Serial1.write(actionableSample);// send a keystroke to the bluefruit!
+  }// turn the pagers off given no actionable sample
+  else{
+    hapticResponce(0);
+  };
+  if(modeFlag)
+  {
+    game(actionableSample);
+  }  
 }
 
 //----------------------------game-------------------
 char gameMessage[] = "aaa";
-char failMessage[] = "fail";
+char failMessage[] = "fail ";
 char winMessage[] = "win";
 
-byte checkResponse(byte input)
-{
-  static int place = 0;
-
-  if(input)
-  {
-    if(input == gameMessage[place])
-    {//one letter right case
-      place++;
+void game(char letter)
+{ // simon says like typing game
+  static int place = 0;//current char that is being attempted
+  
+  if(letter)
+  {// no input no game
+    if (letter==gameMessage[place])
+    {//if the input is correct
+      place++;//increment the place
       if(!gameMessage[place])
-      {//got to the end of the word!!! success!!!
-        place = 0;
-        return 1;
+      {//if it was the last place
+        place=0;// reset message, user has completed
+        rmMessage(gameMessage);//rm user message
+        toast(winMessage);// tell user they won!!!
       }
     }
     else
-    {//fail case
-      place = 0;
-      return 2;
+    {// input was and incorect match
+      place = 0; // make sure place is set back to zero to start over
+      toast(failMessage); // inform user of failure
+      toast(gameMessage); // inform user of goal
     }
   }
-  return 0;// default pass nor fail mode
-}
-
-void callAndResponse(char letter)
-{
-  static boolean messageFlag = true;
-
-  if(messageFlag)
-  {// call mode
-    toast(gameMessage);
-    messageFlag=false;// message is done, set to response mode      
-  }
-  else
-  {// response mode
-    byte result = checkResponse(letter);
-    if (result == 2)
-    {
-      toast(failMessage);
-      messageFlag = true;
-    }
-    else if (result == 1)
-    {
-      toast(winMessage);
-      messageFlag = true;
-    };
-  };
 }
 
 void toast(char message[])
@@ -119,10 +81,16 @@ void toast(char message[])
   {
     ; 
   }
+  rmMessage(message);
+}
+
+void rmMessage(char message[])
+{//remove a message
   for(int i=0;message[i];i++)
   {
     Serial1.write(8);
   }
 }
+
 
 

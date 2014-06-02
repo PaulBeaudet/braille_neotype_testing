@@ -1,14 +1,14 @@
 // logic for understanding braille convertion
 #include "pagers.h"
 // brialle convertion array
-#define ENCODEAMT 29 // size is defined to structure iteration amount
+#define ENCODEAMT 33 // size is defined to structure iteration amount
 byte byteToBraille [2][ENCODEAMT] // 
 {
   { // input in characters
-    ' ','t','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','u','v','w','x','y','z', 8, 128,                          }
+    ' ','t','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','u','v','w','x','y','z', 8, 128,'-',';','.', '?',                      }
   ,
   { //corrisponding braille binary output in decimal form, read from least significant bit
-    32, 30, 1 , 5 , 3 , 11, 9 , 7 , 15, 13, 6 , 14, 17, 21, 19, 27, 25, 23, 31, 29, 22, 49, 53, 46, 51, 59, 57 ,64, 128,                         } 
+    32, 30, 1 , 5 , 3 , 11, 9 , 7 , 15, 13, 6 , 14, 17, 21, 19, 27, 25, 23, 31, 29, 22, 49, 53, 46, 51, 59, 57 ,64, 128, 48, 40, 34, 43,                     } 
 };//each bit in the corrisponding bytes represents a "bump" state
 
 //-----------braille checking and convertion----------------
@@ -93,22 +93,23 @@ bool hapticMessage()
   return false;
 }
 
-char hapticMessage(char message[])
+byte hapticMessage(char message[])
 { 
   static byte possition = 0;
+  byte onLetter = message[possition];
 
-  if(!message[possition])
+  if(!onLetter)
   {
     possition = 0;
     while (!hapticMessage())
     {//finish last "touch"
       ; //figure out how to get rid of this pause latter
     }
-    return -128;//signal the message is done
+    return 128;//signal the message is done
   }
   if (hapticMessage())//refresh display
   {
-    hapticMessage(message[possition]);
+    hapticMessage(onLetter);
     possition++;
     return onLetter;
   }

@@ -10,7 +10,8 @@
 
 bool timeCheck(byte whichTimer, uint32_t durration)
 {//used for checking an setting timer
-  static uint32_t timers[2][NEEDEDTIMERS] = {};// create timer to modify
+  static uint32_t timers[2][NEEDEDTIMERS] = {
+  };// create timer to modify
   if(durration)
   {
     timers[1][whichTimer]=durration; //set durration
@@ -64,89 +65,3 @@ byte buttonsSample()
   }
   return sample;
 }
-
-byte debouncedInput(byte pinState)
-{
-  static byte lastState= 0;
-  static bool timeStart = false;
-
-  if(pinState == lastState)
-  {//given the same sample has occured at least twice
-    if(timeStart)
-    { // given the clock has been set
-      if(timeCheck(BUTTONTIMER, 0))
-      { // given time has elapsed
-        timeStart = false;
-        return pinState; // return a valid debounced event
-      }
-    }
-    else
-    {//start the clock
-      timeCheck(BUTTONTIMER, BOUNCETIME);
-      timeStart=true;
-    };
-  }
-  else
-  {
-    timeStart=false;
-  };
-  lastState=pinState;
-  return 0; // nothing happend
-}
-// ------------ filters -----------------
-
-byte inputIntention(byte letter)
-{//clasifies human intention, returns intended letter
-  static byte lastLetter= 0;
-  static bool printFlag = 0;
-  static bool upperFlag = 0;
-
-  if (letter)
-  {// given we are dealing with a value other then zero
-    if (letter==lastLetter)
-    {
-      if(printFlag)
-      {// if the go ahead to print has been flagged then holds can detected
-        if (timeCheck(HOLD, 0))
-        {//if the hold timer elapses then flag for and upper case
-          upperFlag= true;
-        }
-      }
-      else if (timeCheck(PRESS, 0))
-      {
-        printFlag = true;
-        timeCheck(HOLD, HOLDTIME);
-      }
-    }
-    else
-    {
-      timeCheck(PRESS, BOUNCETIME);
-    }
-  }
-  else if(printFlag)
-  {// if the chord as been let go and there was a lagit key last time
-    printFlag= false;
-    if ( lastLetter == 128)
-    {
-      upperFlag= false;
-      return lastLetter;
-    }
-    if(upperFlag && lastLetter > 32)
-    {// upperflag capitilizes letters given hold state
-      lastLetter= lastLetter - 32;
-      upperFlag= false;
-      return lastLetter;// ex. "a" = 97: 97 - 32 = 65: 65 = "A"
-    }
-    else
-    {
-      return lastLetter;
-    }
-  }
-  lastLetter = letter;
-  return 0;// return the false case in the event of no intentions 
-}
-
-
-
-
-

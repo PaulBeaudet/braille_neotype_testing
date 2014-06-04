@@ -49,7 +49,7 @@ void buttonUp()// it's cold out there
 }
 
 //----------------GENERAL -------------------
-byte buttonsSample()
+byte buttonSample()
 {
   byte sample=0;
   for (byte i=0; i<NUMBUTTONS; i++) // 

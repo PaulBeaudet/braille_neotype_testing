@@ -3,18 +3,39 @@
 #include "buttons.h"
 #include "logicBraille.h"
 
+#undef SPARK_WLAN_ENABLE
+
+char compareBuffer[15] = {
+};//buffer to compare user input
+
+char gameMessage[] = "aaa";
+
+byte modeFlag = 0;// please find a way to get rid of this
+
+int theCon = 1;
+
 // ---------------Main loops and functions--------------------
 void setup()
 { 
   Serial1.begin(9600);
   pagersUp();//set the pager pins as outputs
   buttonUp();//set up the buttons
+  if(Spark.connected())
+  {
+    theCon = 0;
+  }
+  if(!buttonSample())
+  {
+    Spark.connect();
+    //enable internet based functions here
+   Spark.variable("buff", compareBuffer, STRING);
+   Spark.variable("theCon", &theCon, INT);
+  }
 }
 
-bool modeFlag = 0;
 void loop()
 {
-  mainLoop(buttonsSample());
+  mainLoop(buttonSample());
 }
 
 void mainLoop(byte input)
@@ -37,12 +58,6 @@ void mainLoop(byte input)
 }
 
 //----------------------------game-------------------
-char gameMessage[] = "bob the crab";
-char failMessage[] = "fail ";
-char winMessage[] = "win";
-char compareBuffer[15] = {
-};//buffer to compare user input
-
 void game(char letter)
 { // simon says like typing game
   static int place = 0;//current char that is being attempted
@@ -59,9 +74,9 @@ void game(char letter)
     }
     else
     {
-      if(letter > 32 || letter < 97)
+      if(letter > 32 && letter < 97)
       {//in the caps case the last position is edited
-        compareBuffer[place-1]=letter;
+        compareBuffer[place-1]=letter;//!!--- stack overflow warning---!! makesure this case is tightly controled
         return; //in the case an existing letter was edited no incrementing or checking needed
       }   
       compareBuffer[place]=letter;//store the currently printed letter
@@ -78,14 +93,16 @@ void game(char letter)
         {
           if(compareBuffer[i]!=gameMessage[i])
           {
-          toast(failMessage); // inform user of failure
+          toast("you");//the following is in the buffer
+          toast(compareBuffer);// diplay buffer
+          toast("i want");
           toast(gameMessage); // inform user of goal
           return;
           }
         }
-        toast(winMessage);// tell user they won!!!
+        toast("win");// tell user they won!!!
       }
-    }   
+    };   
   }
 }
 
@@ -103,10 +120,11 @@ bool checkMatch(char input[], char target[])
 
 void toast(char message[])
 {// message the appears and disapears, like the one in android
-  for(int pos=0;message[pos];pos++)
+  Serial.print(message);
+  /*for(int pos=0;message[pos];pos++)
   {
     Serial1.write(message[pos]);
-  }
+  }*/
   while(hapticMessage(message) != 128)
   {
     ; 
@@ -134,6 +152,7 @@ byte holdFilter(byte input)
   static uint32_t timer[2] = {
   };
   static bool hint=0;
+  static bool delFlag=0;
 
   if (input && input == lastInput)
   {
@@ -189,13 +208,14 @@ byte holdFilter(byte input)
     if(hint)
     {
       Serial1.write(8);
-      return(8);
+      delFlag = 1;
     }
     hint=false;
     progress=0; //reset progress
     timer[0]=millis();  // note the time set
     timer[1]=actions[progress]; //set durration
     lastInput=input;
+    if(delFlag){return 8;}
   };
   return 0;
 }

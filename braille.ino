@@ -1,7 +1,8 @@
 //braille.ino--- This sketch uses is meant for the cap1188 breakout and a corrisponding darlington array
 // of pager motors. All in order to feel and transmit brialle. Transmission via bluefruit
-#include "buttons.h"
+#include "buttons.h" // button logic, to be consolidated to hardware in near future
 #include "logicBraille.h"
+#include "spark_disable_cloud.h"
 
 #undef SPARK_WLAN_ENABLE
 
@@ -12,35 +13,32 @@ char gameMessage[] = "aaa";
 
 byte modeFlag = 0;// please find a way to get rid of this
 
-int theCon = 1;
-
 // ---------------Main loops and functions--------------------
 void setup()
 { 
   Serial1.begin(9600);
   pagersUp();//set the pager pins as outputs
   buttonUp();//set up the buttons
-  if(Spark.connected())
-  {
-    theCon = 0;
-  }
   if(!buttonSample())
-  {
+  {// connect the spark core in the default button state
     Spark.connect();
-    //enable internet based functions here
+   //while(!Spark.connected()){;}// wait till the spark is connected
    Spark.variable("buff", compareBuffer, STRING);
-   Spark.variable("theCon", &theCon, INT);
   }
 }
 
 void loop()
 {
+	if(Spark.connected())
+	{
+		SPARK_WLAN_Loop();
+	}
   mainLoop(buttonSample());
 }
 
 void mainLoop(byte input)
 {// mainloop is abstracted for testing purposes 
-  byte actionableSample= ifBraille(input);
+  byte actionableSample= brailleConvert(input, 0);// 0 parameter denotes reverse lookup
   if(actionableSample)
   {  
     hapticResponce(input);
@@ -106,7 +104,7 @@ void game(char letter)
   }
 }
 
-bool checkMatch(char input[], char target[])
+boolean checkMatch(char input[], char target[])
 {
   for(byte i=0;target[i];i++)
   {
@@ -151,8 +149,8 @@ byte holdFilter(byte input)
   static byte progress=0;
   static uint32_t timer[2] = {
   };
-  static bool hint=0;
-  static bool delFlag=0;
+  static boolean hint=0;
+  static boolean delFlag=0;
 
   if (input && input == lastInput)
   {

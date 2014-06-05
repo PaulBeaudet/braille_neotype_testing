@@ -12,25 +12,13 @@ byte byteToBraille [2][ENCODEAMT] //
 };//each bit in the corrisponding bytes represents a "bump" state
 
 //-----------braille checking and convertion----------------
-byte ifBraille(byte combination)
-{//checks for valid usage in the character map and converts to a char
-  for(byte i=0; i<ENCODEAMT;i++)
-  {
-    if(combination == (byteToBraille[1][i]))
-    {// for a corrisponding translation
-      return (byteToBraille[0][i]);
-    }// return the matching letter in the array
-  }
-  return 0; // no matches try again
-}
-
-byte brailleConvert(byte letter)
+byte brailleConvert(byte letter, bool convert)
 {
   for(byte i=0; i<ENCODEAMT;i++)
   {
-    if(letter == (byteToBraille[0][i]))
+    if(letter == (byteToBraille[!convert][i]))
     {// for a matching letter in the array
-      return (byteToBraille[1][i]);
+      return (byteToBraille[convert][i]);
     }// return the corrisponding translation
   }
   return 0;
@@ -49,7 +37,7 @@ void hapticResponce(byte input)
 }
 
 //----------------------haptic logic----------------------------
-bool ptimeCheck(uint32_t durration)
+boolean ptimeCheck(uint32_t durration)
 {//used for checking an setting timer
   static uint32_t ptimer[2] = { };// create timer to modify
   if(durration)
@@ -69,12 +57,12 @@ bool ptimeCheck(uint32_t durration)
 void hapticMessage(byte letter) // intializing function
 { // set a letter to be "played"
   ptimeCheck(HAPTICTIMING);
-  patternVibrate(brailleConvert(letter));
+  patternVibrate(brailleConvert(letter, 1));
 }
 
-bool hapticMessage() 
+boolean hapticMessage() 
 { // updating function 
-  static bool touchPause= 0;
+  static boolean touchPause= 0;
 
   if(ptimeCheck(0))
   {//time to "display" a touch has elapsed

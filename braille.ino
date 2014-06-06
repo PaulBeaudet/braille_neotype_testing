@@ -1,4 +1,5 @@
 //braille.ino--- Utilizes an array of 8 buttons and a corrisponding darlington array of 6 pagers
+//Copyright Paul C Beaudet -braile_spark_testing GPL-See LICENSE
 // With the goal of feeling and transmit brialle by Bluetooth transmission w/ Bluefruit EZ-Key
 #include "hardware.h" // abstracts low level hardware
 #include "spark_disable_cloud.h"//needs to be include for the folowing undef

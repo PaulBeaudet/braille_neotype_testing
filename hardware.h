@@ -1,4 +1,5 @@
 // Abstracted hardware setup for spark core version of the braille keyer
+//Copyright Paul C Beaudet -braile_spark_testing GPL-See LICENSE
 #define bitRead(value, bit) (((value) >> (bit)) & 0x01)
 #define bitSet(value, bit) ((value) |= (1UL << (bit)))
 #define bitClear(value, bit) ((value) &= ~(1UL << (bit)))

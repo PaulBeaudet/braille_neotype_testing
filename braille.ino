@@ -15,10 +15,8 @@ byte byteToBraille [2][ENCODEAMT] // brialle convertion array
     32, 30, 1 , 5 , 3 , 11, 9 , 7 , 15, 13, 6 , 14, 17, 21, 19, 27, 25, 23, 31, 29, 22, 49, 53, 46, 51, 59, 57 ,64, 128, 48, 40, 34, 43,                     } 
 };//each bit in the corrisponding bytes represents a "bump" state
 
-char compareBuffer[15] = {};//buffer to compare user input to game message
-char gameMessage[] = "aaa"; //experimental simon says message to learn the keys
-
-byte modeFlag = 0;// please find a way to get rid of this global var
+int HAPTICTIMING = 800; //ms, controls haptic display durration, Future; will be user adjustable
+byte PWMintensity = 200; // Adjusts the intensity of the pwm
 
 // ---------------Main loops and functions--------------------
 void setup()
@@ -36,19 +34,19 @@ void setup()
 void loop()
 {
 	if(Spark.connected()){SPARK_WLAN_Loop();}//spark connect called in setup; run wlan loop
-        mainLoop(buttonSample());//abstracted main loop for testing purposes
+    mainLoop(buttonSample());//abstracted main loop for testing purposes
 }
 
 void mainLoop(byte input)
 {// mainloop is abstracted for testing purposes 
   byte actionableSample= brailleConvert(input, 0);// 0 parameter denotes reverse lookup
-  if(actionableSample){patternVibrate(input, 150);}//fire the assosiated pagers! given action
+  if(actionableSample){patternVibrate(input, PWMintensity);}//fire the assosiated pagers! given action
   else{patternVibrate(0, 0);}//otherwise be sure the pagers are off
   actionableSample = holdFilter(actionableSample);//  further filter input to "human intents"
   if(actionableSample){Serial1.write(actionableSample);}//print the filter output 
 }
 //-----------braille checking and convertion----------------
-byte brailleConvert(byte letter, bool convert)
+byte brailleConvert(byte letter, boolean convert)
 {
   for(byte i=0; i<ENCODEAMT;i++)
   {
@@ -190,14 +188,12 @@ boolean ptimeCheck(uint32_t durration)
     return true;
   }
   return false;
-}
-
-#define HAPTICTIMING 800 //ms, controls haptic display durration, Future; will be user adjustable 
+} 
 
 void hapticMessage(byte letter) // intializing function
 { // set a letter to be "played"
   ptimeCheck(HAPTICTIMING);
-  patternVibrate(brailleConvert(letter, 1), 150);
+  patternVibrate(brailleConvert(letter, 1), PWMintensity);
 }
 
 boolean hapticMessage() 
@@ -242,56 +238,6 @@ byte hapticMessage(char message[])
     return onLetter;
   }
   return 0;
-}
-
-
-//----------------------------game-------------------
-void game(char letter)
-{ // simon says like typing game
-  static int place = 0;//current char that is being attempted
-
-  if(letter)
-  {// no input no game
-    if (letter==8)
-    {//if a letter was deleted
-      if(place)
-      {//only remove a buffer item if it is there
-        place--;
-      }
-      compareBuffer[place]=0;
-    }
-    else
-    {
-      if(letter > 32 && letter < 97)
-      {//in the caps case the last position is edited
-        compareBuffer[place-1]=letter;//!!--- stack overflow warning---!! makesure this case is tightly controled
-        return; //in the case an existing letter was edited no incrementing or checking needed
-      }   
-      compareBuffer[place]=letter;//store the currently printed letter
-      if(compareBuffer[place] != gameMessage[place] || compareBuffer[place]-32 != gameMessage[place])//hint case
-      {
-        //hint case here
-      }
-      place++;//a letter has been detected so increment the place accordingly
-      if(!gameMessage[place])//check the match case
-      {//if we are in the last (null) possition of the message
-        place=0;// make sure place is set back to zero to start over
-        rmMessage(gameMessage);//rm user message
-        for(byte i=0;gameMessage[i];i++)
-        {
-          if(compareBuffer[i]!=gameMessage[i])
-          {
-          toast("you");//the following is in the buffer
-          toast(compareBuffer);// diplay buffer
-          toast("i want");
-          toast(gameMessage); // inform user of goal
-          return;
-          }
-        }
-        toast("win");// tell user they won!!!
-      }
-    };   
-  }
 }
 
 boolean checkMatch(char input[], char target[])

@@ -65,7 +65,7 @@ byte holdTimer(byte reset)
 {
     #define DELAYTIME 1 //the delay time corisponds to action values
     #define TIMESTARTED 0 // Denotes when each action starts
-    static uint16_t actions[]={30,100,300,200,}; //actions progres as timer is held at 0
+    static uint16_t actions[]={30,100,300,200,300}; //actions progres as timer is held at 0
     #define ACTIONDELAYS sizeof(actions) //note sizeof() counts bytes /2 + 1 for correct value
     static uint32_t timer[2] = {};// holds time started and delay time
     static byte progress=0; //keeps the progress of the actions 
@@ -118,6 +118,7 @@ byte holdFilter(byte input)
                                         if(input == 32){input = 65;}//space turns to excliamation    
                                         return input-32;//subtract 32 to get caps; how convienient 
 				case 5://special commands
+				    specialCommands(input);//turns various input into commands
 					break;
 			}
 		}
@@ -142,6 +143,23 @@ byte holdFilter(byte input)
 }
 
 //------------------------messaging functions----------------------------------
+
+void specialCommands(byte input)
+{// specialCommands occure on long holds of particular letters
+    Serial1.write(8);//removes key letter
+	switch(input)//takes in key letter
+	{
+		case 104://'h' or HINT; sings the haptic alphabet
+		for(byte i=97;i<123;i++)
+		{//interate through all the letters in the alphabet
+			hapticMessage(i);//ask for a letter in the alphabet
+			Serial1.write(i);//write the letter
+			while(!hapticMessage()){;}//wait for the char to finish
+			Serial1.write(8);//remove letter
+		}
+		break;
+	}
+}
 
 void toast(char message[])
 {// message the appears and disapears, just like "toast" in android

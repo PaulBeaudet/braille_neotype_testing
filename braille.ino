@@ -61,7 +61,7 @@ byte holdTimer(byte reset)
 {
     #define DELAYTIME 1 //the delay time corisponds to action values
     #define TIMESTARTED 0 // Denotes when each action starts
-    static uint16_t actions[]={2,150,300,200,300}; //actions progres as timer is held at 0
+    static uint16_t actions[]={2,100,300,200,300}; //actions progres as timer is held at 0
     #define ACTIONDELAYS sizeof(actions) //note sizeof() counts bytes /2 + 1 for correct value
     static uint32_t timer[2] = {};// holds time started and delay time
     static byte progress=0; //keeps the progress of the actions 
@@ -105,14 +105,14 @@ byte holdFilter(byte input)
 			{//given how long the input has been held
 				case 1://printable case 5-200ms
 					hint = 1;//the first case where the leter prints is just a hint
-					if(input==8){hint=0;}//prevent a double backspace
+					if(input==8 || input==32){hint=0;}//prevent a double backspace or space hinting
 					return input;//return fruitful output 
 				case 2://validation checkpoint; letter stays printable
 					hint = 0;//Now press counts as a real press and will retain
 					return 0;// no output just a checkponit
 				case 3://hold check point
 					hint = 2; // given user want lower they can release deletion happen
-					if(input==8){hint=0;}//prevent a double backspace
+					if(input==8 || input== 32){hint=0;}//prevent a double backspace or space hinting
 					return 8;//delete currently printed char in preperation for a caps
 				case 4://printable hold case 300-1000ms
 					hint = 0; // removes hinting for capitilization 

@@ -37,5 +37,5 @@ Designed layout- Based on patterns
 *Z-110_001 # 49
 
 Non-printable
-*Backspace-(8) 01000_000 # 64
-*Space-(32)    10000_000 # 128 //HOLD for Carrige Return (13)
+*Backspace-(8) 01000_000 # 128//HOLD for Carrige Return (13)
+*Space-(32)    10000_000 # 64 

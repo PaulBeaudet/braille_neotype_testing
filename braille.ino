@@ -9,13 +9,13 @@
 byte byteToBraille [2][ENCODEAMT] // brialle convertion array
 {
   { // input in characters
-    ' ','t','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','u','v','w','x','y','z', 8, 128,'-',';','.', '?',                      }
+    ' ','t','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','u','v','w','x','y','z', 8, 128,'-',';','.', '?', }
   ,
   { //corrisponding braille binary output in decimal form, read from least significant bit
-    32, 30, 1 , 5 , 3 , 11, 9 , 7 , 15, 13, 6 , 14, 17, 21, 19, 27, 25, 23, 31, 29, 22, 49, 53, 46, 51, 59, 57 ,64, 128, 48, 40, 34, 43,                     } 
+    32, 30, 1 , 5 , 3 , 11, 9 , 7 , 15, 13, 6 , 14, 17, 21, 19, 27, 25, 23, 31, 29, 22, 49, 53, 46, 51, 59, 57 ,64, 128, 48, 40, 34,  43, } 
 };//each bit in the corrisponding bytes represents a "bump" state
 
-int HAPTICTIMING = 800; //ms, controls haptic display durration, Future; will be user adjustable
+int HAPTICTIMING = 1400; //ms, controls haptic display durration, Future; will be user adjustable
 byte PWMintensity = 200; // Adjusts the intensity of the pwm
 
 // ---------------Main loops and functions--------------------
@@ -63,7 +63,7 @@ byte holdTimer(byte reset)
 {
     #define DELAYTIME 1 //the delay time corisponds to action values
     #define TIMESTARTED 0 // Denotes when each action starts
-    static uint16_t actions[]={30,100,300,200,300}; //actions progres as timer is held at 0
+    static uint16_t actions[]={2,150,300,200,300}; //actions progres as timer is held at 0
     #define ACTIONDELAYS sizeof(actions) //note sizeof() counts bytes /2 + 1 for correct value
     static uint32_t timer[2] = {};// holds time started and delay time
     static byte progress=0; //keeps the progress of the actions 
@@ -84,6 +84,15 @@ byte holdTimer(byte reset)
     }
     return 0;// in most cases this function is called, time will yet to be ellapsed 
 }
+
+/**************************
+hold flow
+1. register- Print key hinting, remove given no follow thru
+2. Debounce/conglomerate- Accept valid chord, turn off hinting
+3. Shift-up- remove char in preperation of upper case
+4. Capitilize- print upper case chare
+5. Special Cases- Programed 'command' cases for special features 
+**************************/
 
 byte holdFilter(byte input)
 {//debounces input and interprets hold states for capitilization and other functions
@@ -156,22 +165,32 @@ void specialCommands(byte input)
 			Serial1.write(8);//remove letter
 		}
 		break;
+		case 114://'r'
+		break;
+		case 115://'s' case changes speed off haptic display
+		//btMessage("spd#");
+		//rmMessage("spd#");
+		break;
+		case 116://'t'
+		break;
 	}
 }
 
 void toast(char message[])
 {// message the appears and disapears, just like "toast" in android
-  for(int pos=0;message[pos];pos++){Serial1.write(message[pos]);}//print message
+  btMessage(message);//print the message
   while(hapticMessage(message) != 128){;}//wait for haptic message to finish
   rmMessage(message);// remove message
 }
 
+void btMessage(char message[])
+{
+  for(int pos=0;message[pos];pos++){Serial1.write(message[pos]);}//print message
+}
+
 void rmMessage(char message[])
 {//remove a message
-  for(int i=0;message[i];i++)
-  {
-    Serial1.write(8);
-  }
+  for(int i=0;message[i];i++){Serial1.write(8);}
 }
 
 //----------------------haptic logic----------------------------

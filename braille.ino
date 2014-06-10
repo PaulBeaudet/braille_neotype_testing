@@ -5,14 +5,12 @@
 #include "spark_disable_cloud.h"//needs to be include for the folowing undef
 #undef SPARK_WLAN_ENABLE //disable wifi by defaults in order to have an offline option
 
-#define ENCODEAMT 33 // size is defined to structure iteration amount
+#define ENCODEAMT 28 // size is defined to structure iteration amount
 byte byteToBraille [2][ENCODEAMT] // brialle convertion array
-{
-  { // input in characters
-    ' ','t','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','u','v','w','x','y','z', 8, 128,'-',';','.', '?', }
-  ,
-  { //corrisponding braille binary output in decimal form, read from least significant bit
-    32, 30, 1 , 5 , 3 , 11, 9 , 7 , 15, 13, 6 , 14, 17, 21, 19, 27, 25, 23, 31, 29, 22, 49, 53, 46, 51, 59, 57 ,64, 128, 48, 40, 34,  43, } 
+{// input in characters
+  {'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z', 32, 8 ,}
+  ,//corrisponding braille binary output in decimal form, read from least significant bit
+  { 1 , 5 , 48, 56, 2 , 24, 33, 6 , 4 , 14, 28, 12, 40, 30, 7 , 18, 31, 3 , 16, 32, 51, 45, 8 , 35, 54, 49, 64,128,} 
 };//each bit in the corrisponding bytes represents a "bump" state
 
 int HAPTICTIMING = 1400; //ms, controls haptic display durration, Future; will be user adjustable
@@ -106,24 +104,21 @@ byte holdFilter(byte input)
 			switch(progress)// I dislike swich cases but here we go
 			{//given how long the input has been held
 				case 1://printable case 5-200ms
-					if(input==128){break;}// nonprintable
 					hint = 1;//the first case where the leter prints is just a hint
 					if(input==8){hint=0;}//prevent a double backspace
 					return input;//return fruitful output 
 				case 2://validation checkpoint; letter stays printable
-					if(input==128){break;}// register mode intention
 					hint = 0;//Now press counts as a real press and will retain
 					return 0;// no output just a checkponit
 				case 3://hold check point
-					if(input==128){break;}// register mode intention
 					hint = 2; // given user want lower they can release deletion happen
 					if(input==8){hint=0;}//prevent a double backspace
 					return 8;//delete currently printed char in preperation for a caps
 				case 4://printable hold case 300-1000ms
 					hint = 0; // removes hinting for capitilization 
-					if(input == 128){ break;}// register mode intention
-                                        if(input == 32){input = 65;}//space turns to excliamation    
-                                        return input-32;//subtract 32 to get caps; how convienient 
+					if(input == 8){break;}//exept for backspace
+                    if(input == 32){input = 45;}//space turns to cariage return    
+                    return input-32;//subtract 32 to get caps; how convienient 
 				case 5://special commands
 				    specialCommands(input);//turns various input into commands
 					break;

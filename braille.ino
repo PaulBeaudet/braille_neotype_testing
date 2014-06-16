@@ -142,10 +142,11 @@ byte holdFilter(byte input)
 				case 3://hold check point
 					hint = 2; // given user want lower they can release deletion happen
 					if(input==8 || input== 32){hint=0;}//prevent a double backspace or space hinting
+					if(input > 32 && input < 97 || input > 122 && input < 127){hint=0;break;}//in special char cases
 					return 8;//delete currently printed char in preperation for a caps
 				case 4://printable hold case 300-1000ms
 					hint = 0; // removes hinting for capitilization 
-					if(input == 8){break;}//exept for backspace
+					if(input == 8 || input > 32 && input < 97 || input > 122 && input < 127){break;}//exept for backspace and special cases
                     if(input == 32){input = 45;}//space turns to cariage return    
                     return input-32;//subtract 32 to get caps; how convienient 
 				case 5://special commands

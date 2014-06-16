@@ -134,10 +134,11 @@ byte holdFilter(byte input)
 			{//given how long the input has been held
 				case 1://printable case 5-200ms
 					hint = 1;//the first case where the leter prints is just a hint
-					if(input==8 || input==32){hint=0;}//prevent a double backspace or space hinting
+					if(input==8 || input==32){hint=0;break;}//prevent a double backspace or space hinting
 					return input;//return fruitful output 
 				case 2://validation checkpoint; letter stays printable
 					hint = 0;//Now press counts as a real press and will retain
+					if(input==8 || input==32){return input;}//be sure of printability for back and space before executing
 					return 0;// no output just a checkponit
 				case 3://hold check point
 					hint = 2; // given user want lower they can release deletion happen

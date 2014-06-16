@@ -5,14 +5,6 @@
 #include "spark_disable_cloud.h"//needs to be include for the folowing undef
 #undef SPARK_WLAN_ENABLE //disable wifi by defaults in order to have an offline option
 
-#define ENCODEAMT 28 // size is defined to structure iteration amount
-byte byteToBraille [2][ENCODEAMT] // brialle convertion array
-{// input in characters
-  {'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z', 32, 8 ,}
-  ,//corrisponding braille binary output in decimal form, read from least significant bit
-  { 1 , 5 , 48, 56, 2 , 24, 33, 6 , 4 , 14, 28, 12, 40, 30, 7 , 18, 31, 3 , 16, 32, 51, 45, 8 , 35, 54, 49, 64,128,} 
-};//each bit in the corrisponding bytes represents a "bump" state
-
 int HAPTICTIMING = 1400; //ms, controls haptic display durration, Future; will be user adjustable
 byte PWMintensity = 200; // Adjusts the intensity of the pwm
 
@@ -37,21 +29,58 @@ void loop()
 
 void mainLoop(byte input)
 {// mainloop is abstracted for testing purposes 
-  byte actionableSample= brailleConvert(input, 0);// 0 parameter denotes reverse lookup
+  byte actionableSample= patternToChar(input);// 0 parameter denotes reverse lookup
   if(actionableSample){patternVibrate(input, PWMintensity);}//fire the assosiated pagers! given action
   else{patternVibrate(0, 0);}//otherwise be sure the pagers are off
   actionableSample = holdFilter(actionableSample);//  further filter input to "human intents"
   if(actionableSample){Serial1.write(actionableSample);}//print the filter output 
 }
 //-----------braille checking and convertion----------------
-byte brailleConvert(byte letter, boolean convert)
+byte chordPatterns[] {1,5,48,56,2,24,33,6,4,14,28,12,40,30,7,18,31,3,16,32,51,45,8,35,54,49,};
+  #define PATTERNSIZE sizeof(chordPatterns)
+
+byte patternToChar(byte base)
 {
-  for(byte i=0; i<ENCODEAMT;i++)
-  {
-    if(letter == (byteToBraille[!convert][i]))
-    {// for a matching letter in the array
-      return (byteToBraille[convert][i]);
-    }// return the corrisponding translation
+  if(base == 128){return 8;}//Express convertion: Backspace // Backspace doubles as second level shift for special chars
+  if(base == 64){return 32;}//Express convertion: Space // Space also doubles as the first shift in a chord
+  
+  for (byte i=0; i<PATTERNSIZE; i++)   
+  {// for all of the key mapping   
+    if ( (base & 63) == chordPatterns[i] ) 
+    {//patern match regardless most significant 2 bits // 63 = 0011-1111 // mask the 6th and 7th bit out
+      if ((base & 192) == 192){break;}//third level shift *combination holding space and backspace
+      if (base & 64)//first level shift *combination with space
+      {// 64 = 0100-0000 // if( 6th bit is fliped high )
+        //if(lower shift, less than 10th result) {return corrisponding number}
+        if(i<10){return '0' + i;} //a-j cases (ascii numbers)
+        if(i<25){return 23 + i;}  //k-y cases ( !"#$%&'()*+'-./ )
+        if(i==26){break;}         //z case (unassigned)
+      } 
+      if (base & 128)//second level shift *combination with backspace
+      {//128 = 1000-0000 // if(7th bit is high) 
+        if(i<7){return ':' + i;}//a-g cases ( :;<=>?@ )
+        if(i<13){return 84 + i;}//h-m cases ( [\]^_`  )
+        if(i<17){return 110 + i;}//n-q cases( {|}~    ) 
+        break;                   //other casses unassigned
+      }
+      return 'a' + i;// return plain char based on possition in the array given no shift
+    }
+  }
+  return 0;
+}
+
+byte charToPattern(byte letter)
+{
+  if(letter == 32){return 64;}//Express convertion: Space // Space also doubles as the first shift in a chord
+  
+  for (byte i=0; i<PATTERNSIZE; i++)   
+  {// for all of the key mapping
+    if ( letter == ('a'+ i) ){return chordPatterns[i];}//return typicall letter patterns
+    if ( letter < 58 && letter == ('0' + i) ) {return chordPatterns[i] | 64;} // in numbers shift case return pattern with 6th bit shift
+    if ( letter > 32 && letter < 48 && letter == (23 + i) ) {return chordPatterns[i] | 64;}//k-y cases ( !"#$%&'()*+'-./ )return 6th bit shift
+    if ( letter < 65 && letter == (':' + i) ) {return chordPatterns[i] | 128;}//               a-g cases  (:;<=>?@ ), return 7th bit shift
+    if ( letter > 90 && letter < 97 && letter == (84 + i) ) {return chordPatterns[i] | 128;}// h-m cases  ([\]^_`  ), return 7th bit shift
+    if ( letter > 122 && letter < 127 && letter == (110 + i) ) {return chordPatterns[i] | 128;}//n-q cases( {|}~   ), return 7th bit shift
   }
   return 0;
 }
@@ -160,6 +189,13 @@ void specialCommands(byte input)
 			Serial1.write(8);//remove letter
 		}
 		break;
+		//'i'
+		//'j'
+		//'k'
+		//'l'
+		case 109://'m'
+		  toast("this is a message");
+		break;
 		case 114://'r'
 		break;
 		case 115://'s' case changes speed off haptic display
@@ -207,7 +243,7 @@ boolean ptimeCheck(uint32_t durration)
 void hapticMessage(byte letter) // intializing function
 { // set a letter to be "played"
   ptimeCheck(HAPTICTIMING);
-  patternVibrate(brailleConvert(letter, 1), PWMintensity);
+  patternVibrate(charToPattern(letter), PWMintensity);
 }
 
 boolean hapticMessage() 

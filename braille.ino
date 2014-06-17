@@ -12,6 +12,7 @@ byte PWMintensity = 200; // Adjusts the intensity of the pwm
 void setup()
 { 
   Serial1.begin(9600);//Establish communication with EZ-Key
+  Serial.begin(9600);
   pagersUp();//set the pager pins as outputs
   buttonUp();//set up the buttons
   if(!buttonSample())//given no button holding on start-up; will connect to wifi
@@ -32,7 +33,7 @@ void mainLoop(byte input)
   byte actionableSample= patternToChar(input);// 0 parameter denotes reverse lookup
   if(actionableSample){patternVibrate(input, PWMintensity);}//fire the assosiated pagers! given action
   else{patternVibrate(0, 0);}//otherwise be sure the pagers are off
-  actionableSample = holdFilter(actionableSample);//  further filter input to "human intents"
+  actionableSample = inputFilter(actionableSample);//  further filter input to "human intents"
   if(actionableSample){Serial1.write(actionableSample);}//print the filter output 
 }
 //-----------braille checking and convertion----------------
@@ -121,58 +122,75 @@ hold flow
 5. Special Cases- Programed 'command' cases for special features 
 **************************/
 
-byte holdFilter(byte input)
-{//debounces input and interprets hold states for capitilization and other functions
-	static byte hint=0;// holds whether char falshing is occuring
-	static byte lastInput=0;//remembers last entry to debounce
-	
-	if(input && input== lastInput)
+byte hint=0;// holds whether char falshing is occuring
+byte lastInput=0;//remembers last entry to debounce
+
+byte inputFilter(byte input)
+{//debounces input and interprets hold states for capitilization and other functions	
+	if(input)
 	{//Given values and the fact values are the same as the last
-		if( byte progress = holdTimer(0) )
-		{//check the timer to see if a step has been made
-			switch(progress)// I dislike swich cases but here we go
-			{//given how long the input has been held
-				case 1://printable case 5-200ms
-					hint = 1;//the first case where the leter prints is just a hint
-					if(input==8 || input==32){hint=0;break;}//prevent a double backspace or space hinting
-					return input;//return fruitful output 
-				case 2://validation checkpoint; letter stays printable
-					hint = 0;//Now press counts as a real press and will retain
-					if(input==8 || input==32){return input;}//be sure of printability for back and space before executing
-					return 0;// no output just a checkponit
-				case 3://hold check point
-					hint = 2; // given user want lower they can release deletion happen
-					if(input==8 || input== 32){hint=0;}//prevent a double backspace or space hinting
-					if(input > 32 && input < 97 || input > 122 && input < 127){hint=0;break;}//in special char cases
-					return 8;//delete currently printed char in preperation for a caps
-				case 4://printable hold case 300-1000ms
-					hint = 0; // removes hinting for capitilization 
-					if(input == 8 || input > 32 && input < 97 || input > 122 && input < 127){break;}//exept for backspace and special cases
-                    if(input == 32){input = 45;}//space turns to cariage return    
-                    return input-32;//subtract 32 to get caps; how convienient 
-				case 5://special commands
-				    specialCommands(input);//turns various input into commands
-					break;
-			}
-		}
-		return 0;//if the timer returns no action: typical case
+	    if(input == lastInput){return holdFilter(input);}
+		if(lastInput){return gestureFilter(input);}
 	}
-	else// no input or input was inequal to last
+	return endCase(input); // absolutly no input case
+}
+
+byte endCase(byte input)
+{
+	lastInput=input; // hold the place of the current value for next loop
+    holdTimer(1);//reset the timer
+	byte holdReturn =0;// hold the return char to reduce repition
+	switch(hint)
 	{
-		lastInput=input; // hold the place of the current value for next loop
-		holdTimer(1);//reset the timer
-		byte holdReturn =0;// hold the return char to reduce repition
-		switch(hint)
-		{
-			case 1://input was released before being accepted; speed press for hint
-				holdReturn=8;//delete the hint
-			        break;
-			case 2:// leter was removed for caps, user let go before upper case
-				holdReturn=input;//places the letter back
-		}
-		hint = 0;
-		return holdReturn;
+		case 1://input was released before being accepted; speed press for hint
+			holdReturn=8;//delete the hint
+		        break;
+		case 2:// leter was removed for caps, user let go before upper case
+			holdReturn=input;//places the letter back
 	}
+	hint = 0;
+	return holdReturn;
+}
+
+byte gestureFilter(byte input)
+{
+    static byte modifier = 0;
+    
+    flag=!flag;
+    if(flag){Serial1.print();}
+	return endCase(input);
+}
+
+byte holdFilter(byte input)
+{
+if( byte progress = holdTimer(0) )
+{//check the timer to see if a step has been made
+	switch(progress)// I dislike swich cases but here we go
+	{//given how long the input has been held
+		case 1://printable case 5-200ms
+			hint = 1;//the first case where the leter prints is just a hint
+			if(input==8 || input==32){hint=0;return 0;}//prevent a double backspace or space hinting
+			return input;//return fruitful output 
+		case 2://validation checkpoint; letter stays printable
+			hint = 0;//Now press counts as a real press and will retain
+			if(input==8 || input==32){return input;}//be sure of printability for back and space before executing
+			return 0;// no output just a checkponit
+		case 3://hold check point
+			hint = 2; // given user want lower they can release deletion happen
+			if(input==8 || input== 32){hint=0;}//prevent a double backspace or space hinting
+			if(input > 32 && input < 97 || input > 122 && input < 127){hint=0;return 0;}//in special char cases
+			return 8;//delete currently printed char in preperation for a caps
+		case 4://printable hold case 300-1000ms
+			hint = 0; // removes hinting for capitilization 
+			if(input == 8 || input > 32 && input < 97 || input > 122 && input < 127){return 0;}//exept for backspace and special cases
+			if(input == 32){input = 45;}//space turns to cariage return    
+			return input-32;//subtract 32 to get caps; how convienient 
+		case 5://special commands
+			specialCommands(input);//turns various input into commands
+			return 0;
+	}
+}
+return 0;//if the timer returns no action: typical case
 }
 
 //------------------------messaging functions----------------------------------

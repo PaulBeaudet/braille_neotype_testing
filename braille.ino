@@ -12,13 +12,11 @@ byte PWMintensity = 200; // Adjusts the intensity of the pwm
 void setup()
 { 
   Serial1.begin(9600);//Establish communication with EZ-Key
-  Serial.begin(9600);
   pagersUp();//set the pager pins as outputs
   buttonUp();//set up the buttons
   if(!buttonSample())//given no button holding on start-up; will connect to wifi
   {// connect the spark core in the default button state
     Spark.connect();
-	  toast("wifi");//testing
   }
 }
 
@@ -44,6 +42,7 @@ byte patternToChar(byte base)
 {
   if(base == 128){return 8;}//Express convertion: Backspace // Backspace doubles as second level shift for special chars
   if(base == 64){return 32;}//Express convertion: Space // Space also doubles as the first shift in a chord
+  if(base == 63){return 13;}//Express convertion: Cariage return
   
   for (byte i=0; i<PATTERNSIZE; i++)   
   {// for all of the key mapping   
@@ -87,40 +86,29 @@ byte charToPattern(byte letter)
 }
 // ----------------input interpertation-------------
 
-byte holdTimer(byte reset)
+byte spacerTimer(byte reset)
 {
-    #define DELAYTIME 1 //the delay time corisponds to action values
+	#define DELAYTIME 1 //the delay time corisponds to action values
     #define TIMESTARTED 0 // Denotes when each action starts
-    static uint16_t actions[]={2,100,300,200,300}; //actions progres as timer is held at 0
-    #define ACTIONDELAYS sizeof(actions) //note sizeof() counts bytes /2 + 1 for correct value
+    #define SPACER 10 // ms
     static uint32_t timer[2] = {};// holds time started and delay time
     static byte progress=0; //keeps the progress of the actions 
     
     if(reset)
     {
-	progress=0;//set everything back to the begining
-        timer[DELAYTIME]=actions[progress]; //set the intial timing
-	timer[TIMESTARTED]=millis();  // note the start time of the transition
+		progress=0;//set everything back to the begining
+        timer[DELAYTIME]=SPACER; //set the intial timing
+		timer[TIMESTARTED]=millis();  // note the start time of the transition
     }
     else if(millis() - timer[TIMESTARTED] > timer[DELAYTIME])
     { 
-	progress++;//increment the progress of the time table
-	if(progress==ACTIONDELAYS/2+1){progress=0;}//correct time table if it has been overrun
-	timer[DELAYTIME]=actions[progress]; //set durration baseded on progress level
-	timer[TIMESTARTED]=millis();  // note the start time of the transition
-	return progress; //return which level of progress has ellapsed
+		progress++;//increment the progress of the time table
+		timer[DELAYTIME]=SPACER; //set durration baseded on progress level
+		timer[TIMESTARTED]=millis();  // note the start time of the transition
+		return progress; //return which level of progress has ellapsed
     }
     return 0;// in most cases this function is called, time will yet to be ellapsed 
 }
-
-/**************************
-hold flow
-1. register- Print key hinting, remove given no follow thru
-2. Debounce/conglomerate- Accept valid chord, turn off hinting
-3. Shift-up- remove char in preperation of upper case
-4. Capitilize- print upper case chare
-5. Special Cases- Programed 'command' cases for special features 
-**************************/
 
 byte hint=0;// holds whether char falshing is occuring
 byte lastInput=0;//remembers last entry to debounce
@@ -138,7 +126,7 @@ byte inputFilter(byte input)
 byte endCase(byte input)
 {
 	lastInput=input; // hold the place of the current value for next loop
-    holdTimer(1);//reset the timer
+    spacerTimer(1);//reset the timer
 	byte holdReturn =0;// hold the return char to reduce repition
 	switch(hint)
 	{
@@ -155,40 +143,44 @@ byte endCase(byte input)
 byte gestureFilter(byte input)
 {
     static byte modifier = 0;
+    static boolean flag = 0;
     
     flag=!flag;
-    if(flag){Serial1.print();}
+    //if(flag){return 11;}
 	return endCase(input);
 }
 
+/**************************
+hold flow
+1. register- Print key hinting, remove given no follow thru
+2. Debounce/conglomerate- Accept valid chord, turn off hinting
+3. Shift-up- remove char in preperation of upper case
+4. Capitilize- print upper case chare
+5. Special Cases- Programed 'command' cases for special features 
+**************************/
+
 byte holdFilter(byte input)
 {
-if( byte progress = holdTimer(0) )
-{//check the timer to see if a step has been made
-	switch(progress)// I dislike swich cases but here we go
-	{//given how long the input has been held
-		case 1://printable case 5-200ms
-			hint = 1;//the first case where the leter prints is just a hint
-			if(input==8 || input==32){hint=0;return 0;}//prevent a double backspace or space hinting
-			return input;//return fruitful output 
-		case 2://validation checkpoint; letter stays printable
-			hint = 0;//Now press counts as a real press and will retain
-			if(input==8 || input==32){return input;}//be sure of printability for back and space before executing
-			return 0;// no output just a checkponit
-		case 3://hold check point
-			hint = 2; // given user want lower they can release deletion happen
-			if(input==8 || input== 32){hint=0;}//prevent a double backspace or space hinting
-			if(input > 32 && input < 97 || input > 122 && input < 127){hint=0;return 0;}//in special char cases
-			return 8;//delete currently printed char in preperation for a caps
-		case 4://printable hold case 300-1000ms
-			hint = 0; // removes hinting for capitilization 
-			if(input == 8 || input > 32 && input < 97 || input > 122 && input < 127){return 0;}//exept for backspace and special cases
-			if(input == 32){input = 45;}//space turns to cariage return    
-			return input-32;//subtract 32 to get caps; how convienient 
-		case 5://special commands
-			specialCommands(input);//turns various input into commands
-			return 0;
-	}
+if( byte progress = spacerTimer(0) )//check the timer to see if a step has been made
+{// Start with special case
+    if(input == 8) 
+    { // if holding backspace do it quickly
+      if(progress == 1 || progress > 31 && progress % 3 == 0 || progress % 12 == 0){return 8;} 
+      return 0; // terminate other possibilities
+    }
+    if(input == 32 && progress % 15 == 0)
+    {// space cases
+      if(progress == 1 || progress < 39 && progress % 5 == 0){return 32;}
+      if(progress == 40){return 9;}//hold for tab case
+      return 0; // terminate other possibilities
+    }
+    //---------------------8 or 32 terminate themselves
+    if(progress==1){hint=1; return input;}//the first case where the leter prints is just a hint
+    if(progress==5){hint=0; return 0;}//validation checkpoint;Now press counts as a real press and will retain
+    if(input > 32 && input < 97 || input > 122 && input < 127){return 0;}//in special char cases, go no further
+    if(progress==30){hint=2; return 8;}//delete currently printed char in preperation for a caps
+    if(progress==40){hint=0; return input-32;}//subtract 32 to get caps; how convienient
+    if(progress==70){specialCommands(input);return 0;} //turns various input into commands
 }
 return 0;//if the timer returns no action: typical case
 }

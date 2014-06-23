@@ -31,8 +31,7 @@ void mainLoop(byte input)
   byte actionableSample= patternToChar(input);// 0 parameter denotes reverse lookup
   if(actionableSample){patternVibrate(input, PWMintensity);}//fire the assosiated pagers! given action
   else{patternVibrate(0, 0);}//otherwise be sure the pagers are off
-  actionableSample = inputFilter(actionableSample);//  further filter input to "human intents"
-  if(actionableSample){Serial1.write(actionableSample);}//print the filter output 
+  outputFilter(inputFilter(actionableSample));//  further filter input to "human intents" pass to output handler
 }
 //-----------braille checking and convertion----------------
 byte chordPatterns[] {1,5,48,56,2,24,33,6,4,14,28,12,40,30,7,18,31,3,16,32,51,45,8,35,54,49,};
@@ -86,6 +85,45 @@ byte charToPattern(byte letter)
 }
 // ----------------input interpertation-------------
 
+void outputFilter(byte letter)
+{
+	switch(letter)//takes in key letter
+	{ // execute special compand basd on long hold
+		case 0: return;//typical case; move on
+		case 129:break; //'a'
+		case 130:break; //'b'
+		case 131:break; //'c' copy; cache message
+		case 132:break; //'d'
+		case 133:break; //'e' Enter; confirm
+		case 134:break; //'f'
+		case 135:break; //'g' game
+		case 136:hapticAlpha();break;//'h'
+		case 137:break;	//'i' pwm intensity
+		case 138:break;	//'j'
+		case 139:break;	//'k'
+		case 140:break;	//'l'
+		case 141:break; //'m' Message; cat cache
+		case 142:break; //'n' nyan
+		case 143:break; //'o'
+		case 144:break; //'p'
+		case 145:break; //'q'
+		case 146:break; //'r'
+		case 147:break; //'s' haptic display speed
+		case 148:break; //'t' Transmit send cache
+		case 149:break; //'u'
+		case 150:break; //'v' varify 
+		case 151:break; //'w'
+		case 152:break; //'x'
+		case 153:break; //'y'
+		case 154:break; //'z'
+		case 155:break; //'obrack'
+		case 156:break; //'pipe'
+		case 157:break;	//'closebrack'
+		case 158:break;	//'tilde'
+		default: Serial1.write(letter);//print the filter output given no exception
+	}
+}
+
 byte spacerTimer(byte reset)
 {
 	#define DELAYTIME 1 //the delay time corisponds to action values
@@ -110,112 +148,128 @@ byte spacerTimer(byte reset)
     return 0;// in most cases this function is called, time will yet to be ellapsed 
 }
 
-byte hint=0;// holds whether char falshing is occuring
-byte lastInput=0;//remembers last entry to debounce
-
 byte inputFilter(byte input)
-{//debounces input and interprets hold states for capitilization and other functions	
-	if(input)
+{//debounces input and interprets hold states for capitilization and other functions
+    static byte lastInput=0;//remembers last entry to debounce	
+    
+	if(input)//give something other than 0
 	{//Given values and the fact values are the same as the last
 	    if(input == lastInput){return holdFilter(input);}
-		if(lastInput){return gestureFilter(input);}
+	    if(lastInput == 0)
+	    {
+	      spacerTimer(1);//reset the timer for double press
+	      doubleClick(1);//increment the double click event
+	    }// fall through; reset timer for regular press
+		else{lastInput=input; return 0;}//keep from resetting the timer
 	}
-	return endCase(input); // absolutly no input case
-}
-
-byte endCase(byte input)
-{
 	lastInput=input; // hold the place of the current value for next loop
-    spacerTimer(1);//reset the timer
-	byte holdReturn =0;// hold the return char to reduce repition
-	switch(hint)
+	if(byte progress = spacerTimer(0))
 	{
-		case 1://input was released before being accepted; speed press for hint
-			holdReturn=8;//delete the hint
-		        break;
-		case 2:// leter was removed for caps, user let go before upper case
-			holdReturn=input;//places the letter back
+		if (progress > 10){doubleClick(0);}
 	}
-	hint = 0;
-	return holdReturn;
+	return 0; // typical, no input case
 }
 
-byte gestureFilter(byte input)
+byte doubleClick(byte step)
 {
-    static byte modifier = 0;
-    static boolean flag = 0;
-    
-    flag=!flag;
-    //if(flag){return 11;}
-	return endCase(input);
+	static byte chainOfEvents = 0;
+	
+	if(step == 0){chainOfEvents = 0; return 0;}
+	chainOfEvents = chainOfEvents + step;
+	if(chainOfEvents > 2){return chainOfEvents;}
+	else{return 0;}
 }
 
 /**************************
-hold flow
-1. register- Print key hinting, remove given no follow thru
-2. Debounce/conglomerate- Accept valid chord, turn off hinting
-3. Shift-up- remove char in preperation of upper case
-4. Capitilize- print upper case chare
-5. Special Cases- Programed 'command' cases for special features 
+New hold flow
+1. debounce- accept valid input
+2. Holdover- Remover char in preperation for upper cases
+3. Capitilize- print upper case chare
+4. Holdover- Remover char in preperation for special commands
+5. Special Cases- Programed 'command' cases for special features
 **************************/
 
 byte holdFilter(byte input)
 {
 if( byte progress = spacerTimer(0) )//check the timer to see if a step has been made
-{// Start with special case
-    if(input == 8) 
+{
+    if(progress==2)
+    {
+      if(byte debug = doubleClick(1))
+      {
+      return debug + 48;
+      }
+      else {return input;}
+    }//intial debounce
+    if(input == 8) //special cases 
     { // if holding backspace do it quickly
-      if(progress == 1 || progress > 31 && progress % 3 == 0 || progress % 12 == 0){return 8;} 
+      if(progress > 31 && progress % 3 == 0 || progress % 12 == 0){return 8;} 
       return 0; // terminate other possibilities
     }
-    if(input == 32 && progress % 15 == 0)
+    if(input == 32 )
     {// space cases
-      if(progress == 1 || progress < 39 && progress % 5 == 0){return 32;}
       if(progress == 40){return 9;}//hold for tab case
       return 0; // terminate other possibilities
     }
-    //---------------------8 or 32 terminate themselves
-    if(progress==1){hint=1; return input;}//the first case where the leter prints is just a hint
-    if(progress==5){hint=0; return 0;}//validation checkpoint;Now press counts as a real press and will retain
-    if(input > 32 && input < 97 || input > 122 && input < 127){return 0;}//in special char cases, go no further
-    if(progress==30){hint=2; return 8;}//delete currently printed char in preperation for a caps
-    if(progress==40){hint=0; return input-32;}//subtract 32 to get caps; how convienient
-    if(progress==70){specialCommands(input);return 0;} //turns various input into commands
+    //---------------------8 or 32 terminate themselves   
+    if(progress==40){ return 8;}//delete currently printed char in preperation for a caps //holdover
+    if(input < 91){return 0;}//in special char cases, go no further
+    if(progress==60){return input-32;}//downshift subtract 32 to get caps; how convienient
+    if(progress==80){return 8;}//delete currently printed char in preperation for a special commands
+    if(progress==100){return input + 32;} //upshift turns various input into commands
 }
 return 0;//if the timer returns no action: typical case
 }
 
+byte gestureFilter(byte input, byte lastInput)
+{
+    static uint16_t combinationValue = 0;
+    static uint16_t validCombinations[] {25953,29556,};
+    #define SIZECOMBO sizeof(validCombinations)
+    // e->a left, s->t right, 
+    // 1
+    combinationValue = (input << 8) | lastInput;
+    uint16_t reverseVal = (lastInput << 8) | input;
+	for(byte i = 0; SIZECOMBO;i++)
+	{
+	    if(combinationValue == validCombinations[i])
+	    {
+	    	switch(i)
+	    	{
+	    		case 0:return 11;// left
+	    		case 1:return 7;// right
+	    		/*case 2:break;// ctr
+	    		case 4:break;// shift
+	    		case 5:break;// alt
+	    		case 6:break;// gui*/
+	    	}
+	    }
+	    if(reverseVal == validCombinations[i])
+	    {
+	    	switch(i)
+	    	{
+	    		case 0:return 14;// up
+	    		case 1:return 12;// down
+	    		/*case 2:break;// ctr
+	    		case 4:break;// shift
+	    		case 5:break;// alt
+	    		case 6:break;// gui*/
+	    	}
+	    }
+		// insert, home, pageup, delete, end, pagedwn, right, back, tab, enter, left, down, enter, up
+		//left; ctr, shift, alt, gui Right; ctr, shift, alt, gui,
+	}
+}
 //------------------------messaging functions----------------------------------
 
-void specialCommands(byte input)
-{// specialCommands occure on long holds of particular letters
-    Serial1.write(8);//removes key letter
-	switch(input)//takes in key letter
-	{
-		case 104://'h' or HINT; sings the haptic alphabet
-		for(byte i=97;i<123;i++)
-		{//interate through all the letters in the alphabet
-			hapticMessage(i);//ask for a letter in the alphabet
-			Serial1.write(i);//write the letter
-			while(!hapticMessage()){;}//wait for the char to finish
-			Serial1.write(8);//remove letter
-		}
-		break;
-		//'i'
-		//'j'
-		//'k'
-		//'l'
-		case 109://'m'
-		  toast("this is a message");
-		break;
-		case 114://'r'
-		break;
-		case 115://'s' case changes speed off haptic display
-		//btMessage("spd#");
-		//rmMessage("spd#");
-		break;
-		case 116://'t'
-		break;
+void hapticAlpha()
+{
+	for(byte i=97;i<123;i++)
+	{//interate through all the letters in the alphabet
+		hapticMessage(i);//ask for a letter in the alphabet
+		Serial1.write(i);//write the letter
+		while(!hapticMessage()){;}//wait for the char to finish
+		Serial1.write(8);//remove letter
 	}
 }
 

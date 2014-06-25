@@ -112,6 +112,22 @@ byte holdTimer(byte reset)
     return 0;// in most cases this function is called, time will yet to be ellapsed 
 }
 
+<<<<<<< Updated upstream
+=======
+byte inputFilter(byte input)
+{//debounces input and interprets hold states for capitilization and other functions
+    static byte lastInput=0;//remembers last entry to debounce	
+    
+	if(input)//give something other than 0
+	{//Given values and the fact values are the same as the last
+	    if(input == lastInput){return holdFilter(input);}
+	    if(lastInput == 0){spacerTimer(1);}// fall through; reset timer for regular press
+	}
+	lastInput=input; // hold the place of the current value for next loop
+	return 0; // typical, no input case
+}
+
+>>>>>>> Stashed changes
 /**************************
 hold flow
 1. register- Print key hinting, remove given no follow thru
@@ -122,6 +138,7 @@ hold flow
 **************************/
 
 byte holdFilter(byte input)
+<<<<<<< Updated upstream
 {//debounces input and interprets hold states for capitilization and other functions
 	static byte hint=0;// holds whether char falshing is occuring
 	static byte lastInput=0;//remembers last entry to debounce
@@ -173,6 +190,30 @@ byte holdFilter(byte input)
 		hint = 0;
 		return holdReturn;
 	}
+=======
+{
+if( byte progress = spacerTimer(0) )//check the timer to see if a step has been made
+{
+    if(progress==2){return input;}//intial debounce
+    if(input == 8) //special cases 
+    { // if holding backspace do it quickly
+      if(progress > 31 && progress % 3 == 0 || progress % 12 == 0){return 8;} 
+      return 0; // terminate other possibilities
+    }
+    if(input == 32 )
+    {// space cases
+      if(progress == 40){return 9;}//hold for tab case
+      return 0; // terminate other possibilities
+    }
+    //---------------------8 or 32 terminate themselves   
+    if(progress==40){ return 8;}//delete currently printed char in preperation for a caps //holdover
+    if(input < 91){return 0;}//in special char cases, go no further
+    if(progress==60){return input-32;}//downshift subtract 32 to get caps; how convienient
+    if(progress==80){return 8;}//delete currently printed char in preperation for a special commands
+    if(progress==100){return input + 32;} //upshift turns various input into commands
+}
+return 0;//if the timer returns no action: typical case
+>>>>>>> Stashed changes
 }
 
 //------------------------messaging functions----------------------------------

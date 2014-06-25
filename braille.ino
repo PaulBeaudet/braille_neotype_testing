@@ -17,7 +17,6 @@ void setup()
   if(!buttonSample())//given no button holding on start-up; will connect to wifi
   {// connect the spark core in the default button state
     Spark.connect();
-	  toast("wifi");//testing
   }
 }
 
@@ -32,8 +31,7 @@ void mainLoop(byte input)
   byte actionableSample= patternToChar(input);// 0 parameter denotes reverse lookup
   if(actionableSample){patternVibrate(input, PWMintensity);}//fire the assosiated pagers! given action
   else{patternVibrate(0, 0);}//otherwise be sure the pagers are off
-  actionableSample = holdFilter(actionableSample);//  further filter input to "human intents"
-  if(actionableSample){Serial1.write(actionableSample);}//print the filter output 
+  outputFilter(inputFilter(actionableSample));//  further filter input to "human intents" pass to output handler
 }
 //-----------braille checking and convertion----------------
 byte chordPatterns[] {1,5,48,56,2,24,33,6,4,14,28,12,40,30,7,18,31,3,16,32,51,45,8,35,54,49,};
@@ -43,6 +41,7 @@ byte patternToChar(byte base)
 {
   if(base == 128){return 8;}//Express convertion: Backspace // Backspace doubles as second level shift for special chars
   if(base == 64){return 32;}//Express convertion: Space // Space also doubles as the first shift in a chord
+  if(base == 63){return 13;}//Express convertion: Cariage return
   
   for (byte i=0; i<PATTERNSIZE; i++)   
   {// for all of the key mapping   
@@ -86,34 +85,69 @@ byte charToPattern(byte letter)
 }
 // ----------------input interpertation-------------
 
-byte holdTimer(byte reset)
+void outputFilter(byte letter)
 {
-    #define DELAYTIME 1 //the delay time corisponds to action values
+	switch(letter)//takes in key letter
+	{ // execute special compand basd on long hold
+		case 0: return;//typical case; move on
+		case 129:break; //'a'
+		case 130:break; //'b'
+		case 131:break; //'c' copy; cache message
+		case 132:break; //'d'
+		case 133:break; //'e' Enter; confirm
+		case 134:break; //'f'
+		case 135:break; //'g' game
+		case 136:hapticAlpha();break;//'h'
+		case 137:break;	//'i' pwm intensity
+		case 138:break;	//'j'
+		case 139:break;	//'k'
+		case 140:break;	//'l'
+		case 141:break; //'m' Message; cat cache
+		case 142:break; //'n' nyan
+		case 143:break; //'o'
+		case 144:break; //'p'
+		case 145:break; //'q'
+		case 146:break; //'r'
+		case 147:break; //'s' haptic display speed
+		case 148:break; //'t' Transmit send cache
+		case 149:break; //'u'
+		case 150:break; //'v' varify 
+		case 151:break; //'w'
+		case 152:break; //'x'
+		case 153:break; //'y'
+		case 154:break; //'z'
+		case 155:break; //'obrack'
+		case 156:break; //'pipe'
+		case 157:break;	//'closebrack'
+		case 158:break;	//'tilde'
+		default: Serial1.write(letter);//print the filter output given no exception
+	}
+}
+
+byte spacerTimer(byte reset)
+{
+	#define DELAYTIME 1 //the delay time corisponds to action values
     #define TIMESTARTED 0 // Denotes when each action starts
-    static uint16_t actions[]={2,100,300,200,300}; //actions progres as timer is held at 0
-    #define ACTIONDELAYS sizeof(actions) //note sizeof() counts bytes /2 + 1 for correct value
+    #define SPACER 10 // ms
     static uint32_t timer[2] = {};// holds time started and delay time
     static byte progress=0; //keeps the progress of the actions 
     
     if(reset)
     {
-	progress=0;//set everything back to the begining
-        timer[DELAYTIME]=actions[progress]; //set the intial timing
-	timer[TIMESTARTED]=millis();  // note the start time of the transition
+		progress=0;//set everything back to the begining
+        timer[DELAYTIME]=SPACER; //set the intial timing
+		timer[TIMESTARTED]=millis();  // note the start time of the transition
     }
     else if(millis() - timer[TIMESTARTED] > timer[DELAYTIME])
     { 
-	progress++;//increment the progress of the time table
-	if(progress==ACTIONDELAYS/2+1){progress=0;}//correct time table if it has been overrun
-	timer[DELAYTIME]=actions[progress]; //set durration baseded on progress level
-	timer[TIMESTARTED]=millis();  // note the start time of the transition
-	return progress; //return which level of progress has ellapsed
+		progress++;//increment the progress of the time table
+		timer[DELAYTIME]=SPACER; //set durration baseded on progress level
+		timer[TIMESTARTED]=millis();  // note the start time of the transition
+		return progress; //return which level of progress has ellapsed
     }
     return 0;// in most cases this function is called, time will yet to be ellapsed 
 }
 
-<<<<<<< Updated upstream
-=======
 byte inputFilter(byte input)
 {//debounces input and interprets hold states for capitilization and other functions
     static byte lastInput=0;//remembers last entry to debounce	
@@ -127,70 +161,16 @@ byte inputFilter(byte input)
 	return 0; // typical, no input case
 }
 
->>>>>>> Stashed changes
 /**************************
-hold flow
-1. register- Print key hinting, remove given no follow thru
-2. Debounce/conglomerate- Accept valid chord, turn off hinting
-3. Shift-up- remove char in preperation of upper case
-4. Capitilize- print upper case chare
-5. Special Cases- Programed 'command' cases for special features 
+New hold flow
+1. debounce- accept valid input
+2. Holdover- Remover char in preperation for upper cases
+3. Capitilize- print upper case chare
+4. Holdover- Remover char in preperation for special commands
+5. Special Cases- Programed 'command' cases for special features
 **************************/
 
 byte holdFilter(byte input)
-<<<<<<< Updated upstream
-{//debounces input and interprets hold states for capitilization and other functions
-	static byte hint=0;// holds whether char falshing is occuring
-	static byte lastInput=0;//remembers last entry to debounce
-	
-	if(input && input== lastInput)
-	{//Given values and the fact values are the same as the last
-		if( byte progress = holdTimer(0) )
-		{//check the timer to see if a step has been made
-			switch(progress)// I dislike swich cases but here we go
-			{//given how long the input has been held
-				case 1://printable case 5-200ms
-					hint = 1;//the first case where the leter prints is just a hint
-					if(input==8 || input==32){hint=0;break;}//prevent a double backspace or space hinting
-					return input;//return fruitful output 
-				case 2://validation checkpoint; letter stays printable
-					hint = 0;//Now press counts as a real press and will retain
-					if(input==8 || input==32){return input;}//be sure of printability for back and space before executing
-					return 0;// no output just a checkponit
-				case 3://hold check point
-					hint = 2; // given user want lower they can release deletion happen
-					if(input==8 || input== 32){hint=0;}//prevent a double backspace or space hinting
-					if(input > 32 && input < 97 || input > 122 && input < 127){hint=0;break;}//in special char cases
-					return 8;//delete currently printed char in preperation for a caps
-				case 4://printable hold case 300-1000ms
-					hint = 0; // removes hinting for capitilization 
-					if(input == 8 || input > 32 && input < 97 || input > 122 && input < 127){break;}//exept for backspace and special cases
-                    if(input == 32){input = 45;}//space turns to cariage return    
-                    return input-32;//subtract 32 to get caps; how convienient 
-				case 5://special commands
-				    specialCommands(input);//turns various input into commands
-					break;
-			}
-		}
-		return 0;//if the timer returns no action: typical case
-	}
-	else// no input or input was inequal to last
-	{
-		lastInput=input; // hold the place of the current value for next loop
-		holdTimer(1);//reset the timer
-		byte holdReturn =0;// hold the return char to reduce repition
-		switch(hint)
-		{
-			case 1://input was released before being accepted; speed press for hint
-				holdReturn=8;//delete the hint
-			        break;
-			case 2:// leter was removed for caps, user let go before upper case
-				holdReturn=input;//places the letter back
-		}
-		hint = 0;
-		return holdReturn;
-	}
-=======
 {
 if( byte progress = spacerTimer(0) )//check the timer to see if a step has been made
 {
@@ -213,40 +193,18 @@ if( byte progress = spacerTimer(0) )//check the timer to see if a step has been 
     if(progress==100){return input + 32;} //upshift turns various input into commands
 }
 return 0;//if the timer returns no action: typical case
->>>>>>> Stashed changes
 }
 
 //------------------------messaging functions----------------------------------
 
-void specialCommands(byte input)
-{// specialCommands occure on long holds of particular letters
-    Serial1.write(8);//removes key letter
-	switch(input)//takes in key letter
-	{
-		case 104://'h' or HINT; sings the haptic alphabet
-		for(byte i=97;i<123;i++)
-		{//interate through all the letters in the alphabet
-			hapticMessage(i);//ask for a letter in the alphabet
-			Serial1.write(i);//write the letter
-			while(!hapticMessage()){;}//wait for the char to finish
-			Serial1.write(8);//remove letter
-		}
-		break;
-		//'i'
-		//'j'
-		//'k'
-		//'l'
-		case 109://'m'
-		  toast("this is a message");
-		break;
-		case 114://'r'
-		break;
-		case 115://'s' case changes speed off haptic display
-		//btMessage("spd#");
-		//rmMessage("spd#");
-		break;
-		case 116://'t'
-		break;
+void hapticAlpha()
+{
+	for(byte i=97;i<123;i++)
+	{//interate through all the letters in the alphabet
+		hapticMessage(i);//ask for a letter in the alphabet
+		Serial1.write(i);//write the letter
+		while(!hapticMessage()){;}//wait for the char to finish
+		Serial1.write(8);//remove letter
 	}
 }
 

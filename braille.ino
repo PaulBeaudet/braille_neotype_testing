@@ -40,10 +40,27 @@ void mainLoop(byte input)
   outputFilter(inputFilter(actionableSample));
   //further filter input to "human intents" pass to output handler
 }
+/*********Program Flow********
+buttonSample() get the state of the buttons: Depends on: hardware.h
+returns and byte where each bit is a button
+
+patternToChar() turn the button sample into a represented character
+  chordPatterns 
+  
+patternVibrate() drive pagers, pass a byte where each bit is a motor
+
+inputFilter() debounce cumalitive input and detect holds
+  holdFilter()
+    
+outputFilter() 
+
+**********************************/
 //-----------braille checking and convertion----------------
 byte chordPatterns[] 
-{1,5,48,56,2,24,33,6,4,14,28,12,40,30,7,18,31,3,16,32,51,45,8,35,54,49,};
-  #define PATTERNSIZE sizeof(chordPatterns)
+{ // each byte is a series of bits that make up a chord
+  1,5,48,56,2,24,33,6,4,14,28,12,40,30,7,18,31,3,16,32,51,45,8,35,54,49,
+}; // array ordered as alphabet (a->1, b->5, ect)
+#define PATTERNSIZE sizeof(chordPatterns)
 
 byte patternToChar(byte base)
 {
@@ -107,7 +124,7 @@ byte charToPattern(byte letter)
 // ----------------input interpertation-------------
 
 void outputFilter(byte letter)
-{
+{// long holds shift bytes up; the following switch covers special options
 	switch(letter)//takes in key letter
 	{ // execute special compand basd on long hold
 		case 0: return;//typical case; move on
@@ -118,7 +135,7 @@ void outputFilter(byte letter)
 		case 133:break; //'e' Enter; confirm
 		case 134:break; //'f'
 		case 135:break; //'g' game
-		case 136:hapticAlpha();break;//'h'
+		case 136:hapticAlpha();break;//'h' //hatically displays alphabet
 		case 137:break;	//'i' pwm intensity
 		case 138:break;	//'j'
 		case 139:break;	//'k'
@@ -137,11 +154,11 @@ void outputFilter(byte letter)
 		case 152:break; //'x'
 		case 153:break; //'y'
 		case 154:break; //'z'
-		case 155:break; //'obrack'
+		case 155:break; //'openbracket'
 		case 156:break; //'pipe'
 		case 157:break;	//'closebrack'
 		case 158:break;	//'tilde'
-		default: Serial1.write(letter);//print the filter output given no exception
+		default: Serial1.write(letter);//send ascii given no exception
 	}
 }
 
@@ -171,19 +188,19 @@ byte spacerTimer(byte reset)
 
 byte inputFilter(byte input)
 {//debounces input: interprets hold states for capitilization + other functions
-    static byte lastInput=0;//remembers last entry to debounce	
+  static byte lastInput=0;//remembers last entry to debounce	
     
-	if(input)//give something other than 0
+  if(input)//give something other than 0
 	{//Given values and the fact values are the same as the last
-	    if(input == lastInput){return holdFilter(input);}
-	    if(lastInput == 0){spacerTimer(1);}//fall through; reset for regular press
+	  if(input == lastInput){return holdFilter(input);}
+	  if(lastInput == 0){spacerTimer(1);}//fall through; reset for regular press
 	}
 	lastInput=input; // hold the place of the current value for next loop
-	return 0; // typical, no input case
+  return 0; // typical, no input case
 }
 
 /**************************
-New hold flow
+-HOLD FLOW-
 1. debounce- accept valid input
 2. Holdover- Remover char in preperation for upper cases
 3. Capitilize- print upper case chare
@@ -272,7 +289,7 @@ void hapticMessage(byte letter) // intializing function
 }
 
 boolean hapticMessage() 
-{ // updating function 
+{ // updating function; passing a string sets course of action
   static boolean touchPause= 0;
 
   if(ptimeCheck(0))
@@ -293,7 +310,7 @@ boolean hapticMessage()
 }
 
 byte hapticMessage(char message[])
-{ 
+{ //sending the message param set a course of action, no param executes
   static byte possition = 0;
   byte onLetter = message[possition];
 

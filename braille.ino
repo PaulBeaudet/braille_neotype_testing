@@ -1,11 +1,15 @@
-//braille.ino--- Utilizes an array of 8 buttons and a corrisponding darlington array of 6 pagers
-//Copyright Paul C Beaudet -braile_spark_testing GPL-See LICENSE
-// With the goal of feeling and transmit brialle by Bluetooth transmission w/ Bluefruit EZ-Key
+/* braille.ino
+  *Utilizes an array of 8 buttons 
+  *and a corrisponding darlington array of 6 pagers
+  *Copyright Paul C Beaudet -braile_spark_testing GPL-See LICENSE
+  *With the goal of feeling and transmiting brialle by Bluetooth transmission 
+  *via Bluefruit EZ-Key
+*/
 #include "hardware.h" // abstracts low level hardware
 #include "spark_disable_cloud.h"//needs to be include for the folowing undef
-#undef SPARK_WLAN_ENABLE //disable wifi by defaults in order to have an offline option
+#undef SPARK_WLAN_ENABLE //disable wifi by default to have an offline option
 
-int HAPTICTIMING = 1400; //ms, controls haptic display durration, Future; will be user adjustable
+int HAPTICTIMING = 1400; //ms, haptic display durration, Future; user adjustable
 byte PWMintensity = 200; // Adjusts the intensity of the pwm
 
 // ---------------Main loops and functions--------------------
@@ -22,32 +26,40 @@ void setup()
 
 void loop()
 {
-	if(Spark.connected()){SPARK_WLAN_Loop();}//spark connect called in setup; run wlan loop
-    mainLoop(buttonSample());//abstracted main loop for testing purposes
+	if(Spark.connected())
+	  {SPARK_WLAN_Loop();}//spark connect called in setup; run wlan loop
+  mainLoop(buttonSample());//abstracted main loop for testing purposes
 }
 
 void mainLoop(byte input)
 {// mainloop is abstracted for testing purposes 
-  byte actionableSample= patternToChar(input);// 0 parameter denotes reverse lookup
-  if(actionableSample){patternVibrate(input, PWMintensity);}//fire the assosiated pagers! given action
+  byte actionableSample= patternToChar(input);// 0 parameter == reverse lookup
+  if(actionableSample){patternVibrate(input, PWMintensity);}
+  //fire the assosiated pagers! given action
   else{patternVibrate(0, 0);}//otherwise be sure the pagers are off
-  outputFilter(inputFilter(actionableSample));//  further filter input to "human intents" pass to output handler
+  outputFilter(inputFilter(actionableSample));
+  //further filter input to "human intents" pass to output handler
 }
 //-----------braille checking and convertion----------------
-byte chordPatterns[] {1,5,48,56,2,24,33,6,4,14,28,12,40,30,7,18,31,3,16,32,51,45,8,35,54,49,};
+byte chordPatterns[] 
+{1,5,48,56,2,24,33,6,4,14,28,12,40,30,7,18,31,3,16,32,51,45,8,35,54,49,};
   #define PATTERNSIZE sizeof(chordPatterns)
 
 byte patternToChar(byte base)
 {
-  if(base == 128){return 8;}//Express convertion: Backspace // Backspace doubles as second level shift for special chars
-  if(base == 64){return 32;}//Express convertion: Space // Space also doubles as the first shift in a chord
+  if(base == 128){return 8;}//Express convertion: Backspace 
+  // Backspace doubles as second level shift for special chars
+  if(base == 64){return 32;}//Express convertion: Space 
+  // Space also doubles as the first shift in a chord
   if(base == 63){return 13;}//Express convertion: Cariage return
   
   for (byte i=0; i<PATTERNSIZE; i++)   
   {// for all of the key mapping   
     if ( (base & 63) == chordPatterns[i] ) 
-    {//patern match regardless most significant 2 bits // 63 = 0011-1111 // mask the 6th and 7th bit out
-      if ((base & 192) == 192){break;}//third level shift *combination holding space and backspace
+    {//patern match regardless most significant 2 bits 
+    // 63 = 0011-1111 // mask the 6th and 7th bit out
+      if ((base & 192) == 192){break;}
+      //third level shift *combination holding space and backspace
       if (base & 64)//first level shift *combination with space
       {// 64 = 0100-0000 // if( 6th bit is fliped high )
         //if(lower shift, less than 10th result) {return corrisponding number}
@@ -62,24 +74,33 @@ byte patternToChar(byte base)
         if(i<17){return 110 + i;}//n-q cases( {|}~    ) 
         break;                   //other casses unassigned
       }
-      return 'a' + i;// return plain char based on possition in the array given no shift
-    }
+      return 'a' + i;
+    }// return plain char based on possition in the array given no shift
   }
   return 0;
 }
 
 byte charToPattern(byte letter)
 {
-  if(letter == 32){return 64;}//Express convertion: Space // Space also doubles as the first shift in a chord
-  
+  if(letter == 32){return 64;}//Express convertion: Space 
+  // Space also doubles as the first shift in a chord
   for (byte i=0; i<PATTERNSIZE; i++)   
   {// for all of the key mapping
-    if ( letter == ('a'+ i) ){return chordPatterns[i];}//return typicall letter patterns
-    if ( letter < 58 && letter == ('0' + i) ) {return chordPatterns[i] | 64;} // in numbers shift case return pattern with 6th bit shift
-    if ( letter > 32 && letter < 48 && letter == (23 + i) ) {return chordPatterns[i] | 64;}//k-y cases ( !"#$%&'()*+'-./ )return 6th bit shift
-    if ( letter < 65 && letter == (':' + i) ) {return chordPatterns[i] | 128;}//               a-g cases  (:;<=>?@ ), return 7th bit shift
-    if ( letter > 90 && letter < 97 && letter == (84 + i) ) {return chordPatterns[i] | 128;}// h-m cases  ([\]^_`  ), return 7th bit shift
-    if ( letter > 122 && letter < 127 && letter == (110 + i) ) {return chordPatterns[i] | 128;}//n-q cases( {|}~   ), return 7th bit shift
+    if ( letter == ('a'+ i) ){return chordPatterns[i];}
+    //return typicall letter patterns
+    if ( letter < 58 && letter == ('0' + i) ) 
+      {return chordPatterns[i] | 64;} 
+    // in numbers shift case return pattern with 6th bit shift
+    if ( letter > 32 && letter < 48 && letter == (23 + i) ) 
+      {return chordPatterns[i] | 64;}
+    //k-y cases ( !"#$%&'()*+'-./ )return 6th bit shift
+    if ( letter < 65 && letter == (':' + i) ) {return chordPatterns[i] | 128;}
+    //a-g cases  (:;<=>?@ ), return 7th bit shift
+    if ( letter > 90 && letter < 97 && letter == (84 + i) ) 
+      {return chordPatterns[i] | 128;}
+      // h-m cases  ([\]^_`  ), return 7th bit shift
+    if ( letter > 122 && letter < 127 && letter == (110 + i) ) 
+    {return chordPatterns[i] | 128;}//n-q cases( {|}~   ), return 7th bit shift
   }
   return 0;
 }
@@ -145,17 +166,17 @@ byte spacerTimer(byte reset)
 		timer[TIMESTARTED]=millis();  // note the start time of the transition
 		return progress; //return which level of progress has ellapsed
     }
-    return 0;// in most cases this function is called, time will yet to be ellapsed 
+    return 0;// in most cases called, time will yet to be ellapsed 
 }
 
 byte inputFilter(byte input)
-{//debounces input and interprets hold states for capitilization and other functions
+{//debounces input: interprets hold states for capitilization + other functions
     static byte lastInput=0;//remembers last entry to debounce	
     
 	if(input)//give something other than 0
 	{//Given values and the fact values are the same as the last
 	    if(input == lastInput){return holdFilter(input);}
-	    if(lastInput == 0){spacerTimer(1);}// fall through; reset timer for regular press
+	    if(lastInput == 0){spacerTimer(1);}//fall through; reset for regular press
 	}
 	lastInput=input; // hold the place of the current value for next loop
 	return 0; // typical, no input case
@@ -172,7 +193,7 @@ New hold flow
 
 byte holdFilter(byte input)
 {
-if( byte progress = spacerTimer(0) )//check the timer to see if a step has been made
+if( byte progress = spacerTimer(0) )//check the timer to see if a step has been
 {
     if(progress==2){return input;}//intial debounce
     if(input == 8) //special cases 
@@ -186,11 +207,14 @@ if( byte progress = spacerTimer(0) )//check the timer to see if a step has been 
       return 0; // terminate other possibilities
     }
     //---------------------8 or 32 terminate themselves   
-    if(progress==40){ return 8;}//delete currently printed char in preperation for a caps //holdover
+    if(progress==40){ return 8;}
+    //delete currently printed char in preperation for a caps //holdover
     if(input < 91){return 0;}//in special char cases, go no further
-    if(progress==60){return input-32;}//downshift subtract 32 to get caps; how convienient
-    if(progress==80){return 8;}//delete currently printed char in preperation for a special commands
-    if(progress==100){return input + 32;} //upshift turns various input into commands
+    if(progress==60){return input-32;}//downshift subtract 32 to get caps
+    if(progress==90){return 8;}
+    //delete currently printed char in preperation for a special commands
+    if(progress==110){return input + 32;}
+    //upshift turns various input into commands
 }
 return 0;//if the timer returns no action: typical case
 }
